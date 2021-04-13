@@ -81,9 +81,16 @@ void FT205EV::Run()
 	}
 
 	windvane_s windvane{};
+	windvane.timestamp = hrt_absolute_time();
 	_windvane_pub.publish(windvane);
 
-	//PX4_INFO("time %llu\n", hrt_absolute_time());
+	bool updated = _windvane_sub.updated();
+
+	if (updated) {
+		if (_windvane_sub.copy(&windvane)) {
+			PX4_INFO("time %llu\n", windvane.timestamp);
+		}
+	}
 
 	ScheduleDelayed(CONTROLLER_PERIOD_DEFAULT);
 }

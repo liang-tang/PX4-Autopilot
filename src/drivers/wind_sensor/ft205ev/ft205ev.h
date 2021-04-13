@@ -46,7 +46,7 @@
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
-#include <uORB/Publication.hpp>
+#include <uORB/Subscription.hpp>
 #include <uORB/PublicationMulti.hpp>
 #include <uORB/topics/windvane.h>
 
@@ -127,4 +127,5 @@ private:
 	static struct work_s _work;
 
 	uORB::PublicationMulti<windvane_s> _windvane_pub{ORB_ID(windvane)};
+	uORB::Subscription		   _windvane_sub{ORB_ID(windvane)};
 };

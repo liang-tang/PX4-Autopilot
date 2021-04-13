@@ -46,11 +46,9 @@
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
-#include <uORB/Subscription.hpp>
 #include <uORB/Publication.hpp>
-#include <uORB/topics/parameter_update.h>
-#include <uORB/topics/sensor_accel.h>
-#include <uORB/topics/wind_estimate.h>
+#include <uORB/PublicationMulti.hpp>
+#include <uORB/topics/windvane.h>
 
 #include <mathlib/mathlib.h>
 
@@ -128,5 +126,5 @@ private:
 	/** Work queue struct for the RTOS scheduler. */
 	static struct work_s _work;
 
-	uORB::Publication<wind_estimate_s> _wind_pub{ORB_ID(wind_estimate)};
+	uORB::PublicationMulti<windvane_s> _windvane_pub{ORB_ID(windvane)};
 };

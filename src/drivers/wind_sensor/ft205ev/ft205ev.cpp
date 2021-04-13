@@ -80,8 +80,8 @@ void FT205EV::Run()
 		return;
 	}
 
-	wind_estimate_s wind_estimate{};
-	_wind_pub.publish(wind_estimate);
+	windvane_s windvane{};
+	_windvane_pub.publish(windvane);
 
 	//PX4_INFO("time %llu\n", hrt_absolute_time());
 

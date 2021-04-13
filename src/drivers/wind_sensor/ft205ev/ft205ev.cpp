@@ -118,12 +118,14 @@ void FT205EV::Run()
 		px4_arch_gpiowrite(GPIO_HEATER_OUTPUT, 1);
 	}
 
+	PX4_INFO("time %llu\n", hrt_absolute_time());
+
 	// Schedule the next cycle.
 	if (_heater_on) {
-		ScheduleDelayed(_controller_time_on_usec);
+		ScheduleDelayed(100 * 1000);
 
 	} else {
-		ScheduleDelayed(_controller_period_usec - _controller_time_on_usec);
+		ScheduleDelayed(100 * 1000);
 	}
 }
 
@@ -150,7 +152,7 @@ void FT205EV::initialize_topics()
 
 	// Exit the driver if the sensor ID does not match the desired sensor.
 	if (_sensor_accel.device_id != (uint32_t)_param_wind_sensor_xxx.get()) {
-		request_stop();
+		//request_stop();
 		PX4_ERR("Could not identify IMU sensor.");
 	}
 }

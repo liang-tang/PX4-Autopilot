@@ -89,7 +89,7 @@ void FT205EV::Run()
 
 	if (updated) {
 		if (_windvane_sub.copy(&windvane)) {
-			PX4_INFO("time %llu\n", windvane.timestamp);
+			//PX4_INFO("time %llu\n", windvane.timestamp);
 		}
 	}
 

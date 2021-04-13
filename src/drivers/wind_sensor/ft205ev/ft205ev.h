@@ -47,8 +47,10 @@
 #include <px4_platform_common/module_params.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <uORB/Subscription.hpp>
+#include <uORB/Publication.hpp>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/sensor_accel.h>
+#include <uORB/topics/wind_estimate.h>
 
 #include <mathlib/mathlib.h>
 
@@ -95,33 +97,6 @@ public:
 	static int task_spawn(int argc, char *argv[]);
 
 	/**
-	 * @brief Sets and/or reports the heater controller time period value in microseconds.
-	 * @param argv Pointer to the input argument array.
-	 * @return Returns 0 iff successful, -1 otherwise.
-	 */
-	int controller_period(char *argv[]);
-
-	/**
-	 * @brief Sets and/or reports the heater controller integrator gain value.
-	 * @param argv Pointer to the input argument array.
-	 * @return Returns the heater integrator gain value iff successful, 0.0f otherwise.
-	 */
-	float integrator(char *argv[]);
-
-	/**
-	 * @brief Sets and/or reports the heater controller proportional gain value.
-	 * @param argv Pointer to the input argument array.
-	 * @return Returns the heater proportional gain value iff successful, 0.0f otherwise.
-	 */
-	float proportional(char *argv[]);
-
-	/**
-	 * @brief Reports the heater target sensor.
-	 * @return Returns the id of the target sensor
-	 */
-	uint32_t sensor_id();
-
-	/**
 	 * @brief Initiates the heater driver work queue, starts a new background task,
 	 *        and fails if it is already running.
 	 * @return Returns 1 iff start was successful.
@@ -133,13 +108,6 @@ public:
 	 * @return Returns 0 iff successful, -1 otherwise.
 	 */
 	int print_status();
-
-	/**
-	 * @brief Sets and/or reports the heater target temperature.
-	 * @param argv Pointer to the input argument array.
-	 * @return Returns the heater target temperature value iff successful, -1.0f otherwise.
-	 */
-	float temperature_setpoint(char *argv[]);
 
 protected:
 
@@ -157,34 +125,8 @@ private:
 	 */
 	void Run() override;
 
-	/**
-	 * @brief Updates and checks for updated uORB parameters.
-	 * @param force Boolean to determine if an update check should be forced.
-	 */
-	void update_params(const bool force = false);
-
 	/** Work queue struct for the RTOS scheduler. */
 	static struct work_s _work;
 
-	int _controller_period_usec = CONTROLLER_PERIOD_DEFAULT;
-
-	int _controller_time_on_usec = 0;
-
-	bool _heater_on = false;
-
-	float _integrator_value = 0.0f;
-
-	uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
-
-	float _proportional_value = 0.0f;
-
-	uORB::Subscription _sensor_accel_sub{ORB_ID(sensor_accel)};
-	sensor_accel_s _sensor_accel{};
-
-	float _sensor_temperature = 0.0f;
-
-	/** @note Declare local parameters using defined parameters. */
-	DEFINE_PARAMETERS(
-		(ParamInt<px4::params::XXX>) _param_wind_sensor_xxx
-	)
+	uORB::Publication<wind_estimate_s> _wind_pub{ORB_ID(wind_estimate)};
 };

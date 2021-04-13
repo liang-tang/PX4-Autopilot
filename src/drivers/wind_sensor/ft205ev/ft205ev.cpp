@@ -93,6 +93,24 @@ void FT205EV::Run()
 		}
 	}
 
+	vehicle_global_position_s global_pos;
+	vehicle_local_position_s local_pos;
+
+	if (_global_pos_sub.update(&global_pos) && _local_pos_sub.update(&local_pos)) {
+
+	}
+
+	vehicle_attitude_s attitude;
+
+	if (_att_sub.update(&attitude)) {
+		const matrix::Eulerf euler(matrix::Quatf(attitude.q));
+		const float roll(euler.phi());
+		const float pitch(euler.theta());
+		const float yaw(euler.psi());
+
+		PX4_INFO("roll pitch yaw %.2f %.2f %.2f\n", (double)roll, (double)pitch, (double)yaw);
+	}
+
 	ScheduleDelayed(CONTROLLER_PERIOD_DEFAULT);
 }
 

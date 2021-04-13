@@ -49,6 +49,9 @@
 #include <uORB/Subscription.hpp>
 #include <uORB/PublicationMulti.hpp>
 #include <uORB/topics/windvane.h>
+#include <uORB/topics/vehicle_attitude.h>
+#include <uORB/topics/vehicle_local_position.h>
+#include <uORB/topics/vehicle_global_position.h>
 
 #include <mathlib/mathlib.h>
 
@@ -132,4 +135,9 @@ private:
 
 	uORB::PublicationMulti<windvane_s> _windvane_pub{ORB_ID(windvane)};
 	uORB::Subscription		   _windvane_sub{ORB_ID(windvane)};
+
+	uORB::Subscription _att_sub{ORB_ID(vehicle_attitude)};
+	uORB::Subscription _local_pos_sub{ORB_ID(vehicle_local_position)};
+	uORB::Subscription _global_pos_sub{ORB_ID(vehicle_global_position)};
+
 };

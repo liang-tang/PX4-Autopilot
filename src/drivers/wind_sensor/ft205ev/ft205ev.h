@@ -112,7 +112,7 @@ protected:
 	/**
 	 * @brief Called once to initialize uORB topics.
 	 */
-	void initialize_topics();
+	void initialize_ports();
 
 private:
 
@@ -123,8 +123,12 @@ private:
 	 */
 	void Run() override;
 
+	int setBaudrate(unsigned index, unsigned baud);
+
 	/** Work queue struct for the RTOS scheduler. */
 	static struct work_s _work;
+
+	int _serial_fd[2] = {-1, -1};
 
 	uORB::PublicationMulti<windvane_s> _windvane_pub{ORB_ID(windvane)};
 	uORB::Subscription		   _windvane_sub{ORB_ID(windvane)};

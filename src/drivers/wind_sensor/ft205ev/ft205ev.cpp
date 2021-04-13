@@ -46,9 +46,10 @@
 #include <px4_platform_common/log.h>
 #include <drivers/drv_hrt.h>
 
-#ifndef GPIO_HEATER_OUTPUT
-#error "To use the ft205ev driver, the board_config.h must define and initialize GPIO_HEATER_OUTPUT"
-#endif
+#include <unistd.h>
+#include <fcntl.h>
+#include <termios.h>
+#include <errno.h>
 
 FT205EV::FT205EV() :
 	ModuleParams(nullptr),
@@ -95,9 +96,109 @@ void FT205EV::Run()
 	ScheduleDelayed(CONTROLLER_PERIOD_DEFAULT);
 }
 
-void FT205EV::initialize_topics()
+void FT205EV::initialize_ports()
 {
+	const char *port1 = "/dev/ttyS3";
+	const char *port2 = "/dev/ttyS4";
+	/* open the serial port */
+	_serial_fd[0] = ::open(port1, O_RDWR | O_NOCTTY);
 
+	if (_serial_fd[0] < 0) {
+		PX4_ERR("FT205EV: failed to open serial port: %s err: %d", port1, errno);
+		return;
+	}
+
+	_serial_fd[1] = ::open(port2, O_RDWR | O_NOCTTY);
+
+	if (_serial_fd[1] < 0) {
+		PX4_ERR("FT205EV: failed to open serial port: %s err: %d", port2, errno);
+		return;
+	}
+
+	if (setBaudrate(0, 9600) != 0) {
+		PX4_ERR("FT205EV: failed to set serial port: %s err: %d", port1, errno);
+	}
+
+	if (setBaudrate(1, 9600) != 0) {
+		PX4_ERR("FT205EV: failed to set serial port: %s err: %d", port2, errno);
+	}
+}
+
+int FT205EV::setBaudrate(unsigned index, unsigned baud)
+{
+	int speed;
+
+	switch (baud) {
+	case 9600:   speed = B9600;   break;
+
+	case 19200:  speed = B19200;  break;
+
+	case 38400:  speed = B38400;  break;
+
+	case 57600:  speed = B57600;  break;
+
+	case 115200: speed = B115200; break;
+
+	case 230400: speed = B230400; break;
+
+	default:
+		return -EINVAL;
+	}
+
+	struct termios uart_config;
+
+	int termios_state;
+
+	/* fill the struct for the new configuration */
+	tcgetattr(_serial_fd[index], &uart_config);
+
+	//
+	// Input flags - Turn off input processing
+	//
+	// convert break to null byte, no CR to NL translation,
+	// no NL to CR translation, don't mark parity errors or breaks
+	// no input parity check, don't strip high bit off,
+	// no XON/XOFF software flow control
+	//
+	uart_config.c_iflag &= ~(IGNBRK | BRKINT | ICRNL |
+				 INLCR | PARMRK | INPCK | ISTRIP | IXON);
+	//
+	// Output flags - Turn off output processing
+	//
+	// no CR to NL translation, no NL to CR-NL translation,
+	// no NL to CR translation, no column 0 CR suppression,
+	// no Ctrl-D suppression, no fill characters, no case mapping,
+	// no local output processing
+	//
+	// config.c_oflag &= ~(OCRNL | ONLCR | ONLRET |
+	//                     ONOCR | ONOEOT| OFILL | OLCUC | OPOST);
+	uart_config.c_oflag = 0;
+
+	//
+	// No line processing
+	//
+	// echo off, echo newline off, canonical mode off,
+	// extended input processing off, signal chars off
+	//
+	uart_config.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
+
+	/* no parity, one stop bit, disable flow control */
+	uart_config.c_cflag &= ~(CSTOPB | PARENB | CRTSCTS);
+
+	/* set baud rate */
+	if ((termios_state = cfsetispeed(&uart_config, speed)) < 0) {
+		return -errno;
+	}
+
+	if ((termios_state = cfsetospeed(&uart_config, speed)) < 0) {
+		return -errno;
+	}
+
+	if ((termios_state = tcsetattr(_serial_fd[index], TCSANOW, &uart_config)) < 0) {
+		return -errno;
+	}
+
+	return 0;
 }
 
 int FT205EV::print_status()
@@ -109,7 +210,7 @@ int FT205EV::print_status()
 
 int FT205EV::start()
 {
-	initialize_topics();
+	initialize_ports();
 
 	ScheduleNow();
 

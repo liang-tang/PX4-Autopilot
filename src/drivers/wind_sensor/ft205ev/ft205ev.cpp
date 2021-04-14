@@ -114,6 +114,39 @@ void FT205EV::Run()
 	ScheduleDelayed(CONTROLLER_PERIOD_DEFAULT);
 }
 
+void FT205EV::update()
+{
+	// two serial needs
+	if (_serial_fd[0] < 0 || _serial_fd[1] < 0) {
+		return;
+	}
+
+	for (uint8_t i = 0; i < 2; i++) {
+		// read from the uart. This must be non-blocking, so check first if there is data available
+		int bytes_available = 0;
+		int ret = ioctl(_serial_fd[i], FIONREAD, (unsigned long)&bytes_available);
+
+		if (ret != 0 || bytes_available <= 0) {
+			continue;
+		}
+
+		const int buf_length = 24;
+		uint8_t buf[buf_length];
+
+		int num_read = read(_serial_fd[i], buf, buf_length);
+
+		for (int j = 0; j < num_read; ++j) {
+			for (int k = 0; k < 24 - 1; k++) {
+				_frame_buffer[i][k] = _frame_buffer[i][k + 1];
+			}
+			_frame_buffer[i][ 24 - 1] = buf[j];
+
+			// $WI,WVP=020.0,045,0*73<cr><lf>
+ 		}
+
+	}
+}
+
 void FT205EV::initialize_ports()
 {
 	const char *port1 = "/dev/ttyS3";

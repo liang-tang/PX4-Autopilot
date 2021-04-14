@@ -145,6 +145,14 @@ void WINDVANE_ESTIMATOR::run()
 
 	windvane_sensor_s windvane_sensor{};
 
+        const char *filename = PX4_STORAGEDIR"/test.txt";
+
+        int _fd = ::open(filename, O_CREAT | O_WRONLY, PX4_O_MODE_666);
+
+        if (_fd == -1) {
+                PX4_INFO("open error");
+        }
+
 	while (!should_exit()) {
 
 		// wait for up to 1000ms for data
@@ -161,9 +169,20 @@ void WINDVANE_ESTIMATOR::run()
 
 		} else if (fds[0].revents & POLLIN) {
 			orb_copy(ORB_ID(windvane_sensor), windvane_sensor_sub, &windvane_sensor);
-			// PX4_INFO("%llu %.2f %.2f %.2f %.2f\n", windvane_sensor.timestamp,
-			// 	(double)windvane_sensor.speed_hor, (double)windvane_sensor.angle_hor,
-			// 	(double)windvane_sensor.speed_ver, (double)windvane_sensor.angle_ver);
+			PX4_INFO("%llu %.2f %.2f %.2f %.2f\n", windvane_sensor.timestamp,
+				(double)windvane_sensor.speed_hor, (double)windvane_sensor.angle_hor,
+				(double)windvane_sensor.speed_ver, (double)windvane_sensor.angle_ver);
+			char *file = nullptr;
+			if (asprintf(&file, "%.2f,%.2f,%.2f,%.2f\n",
+				(double)windvane_sensor.speed_hor,
+				(double)windvane_sensor.angle_hor,
+				(double)windvane_sensor.speed_ver,
+				(double)windvane_sensor.angle_ver) < 0) {
+				continue;
+			}
+			::write(_fd, file, strlen(file));
+			fsync(_fd);
+			free(file);
 		}
 
 		if (_att_sub.updated()) {

@@ -1,9 +1,9 @@
 uint64 timestamp                # time since system start (microseconds)
-float32 wind_speed_from_hor_sensor
-float32 wind_angle_from_hor_sensor
+float32 speed_hor
+float32 angle_hor
 
-float32 wind_speed_from_ver_sensor
-float32 wind_angle_from_ver_sensor
+float32 speed_ver
+float32 angle_ver
 
 float32[3] attitude
 

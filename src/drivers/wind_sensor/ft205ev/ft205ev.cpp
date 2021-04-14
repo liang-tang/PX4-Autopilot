@@ -55,12 +55,10 @@ FT205EV::FT205EV() :
 	ModuleParams(nullptr),
 	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::lp_default)
 {
-
 }
 
 FT205EV::~FT205EV()
 {
-
 }
 
 int FT205EV::custom_command(int argc, char *argv[])
@@ -80,6 +78,9 @@ void FT205EV::Run()
 		exit_and_cleanup();
 		return;
 	}
+
+	// update serial port
+	update();
 
 	windvane_s windvane{};
 	windvane.timestamp = hrt_absolute_time();
@@ -136,12 +137,11 @@ void FT205EV::update()
 		int num_read = read(_serial_fd[i], buf, buf_length);
 
 		for (int j = 0; j < num_read; ++j) {
-			for (int k = 0; k < 24 - 1; k++) {
-				_frame_buffer[i][k] = _frame_buffer[i][k + 1];
+			if (windvane_nmea[i]->decode(buf[j])) {
+				float speed = windvane_nmea[i]->get_speed();
+				float wind_dir = windvane_nmea[i]->get_wind_dir();
+				PX4_INFO("windvane_nmea: speed %.2f dir %.2f\n", (double)speed, (double)wind_dir);
 			}
-			_frame_buffer[i][ 24 - 1] = buf[j];
-
-			// $WI,WVP=020.0,045,0*73<cr><lf>
  		}
 
 	}
@@ -149,8 +149,8 @@ void FT205EV::update()
 
 void FT205EV::initialize_ports()
 {
-	const char *port1 = "/dev/ttyS3";
-	const char *port2 = "/dev/ttyS4";
+	const char *port1 = "/dev/ttyS2";
+	const char *port2 = "/dev/ttyS3";
 	/* open the serial port */
 	_serial_fd[0] = ::open(port1, O_RDWR | O_NOCTTY);
 
@@ -173,6 +173,9 @@ void FT205EV::initialize_ports()
 	if (setBaudrate(1, 9600) != 0) {
 		PX4_ERR("FT205EV: failed to set serial port: %s err: %d", port2, errno);
 	}
+
+	windvane_nmea[0] = new AP_WindVane_NMEA();
+	windvane_nmea[1] = new AP_WindVane_NMEA();
 }
 
 int FT205EV::setBaudrate(unsigned index, unsigned baud)

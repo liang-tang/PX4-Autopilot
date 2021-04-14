@@ -14,31 +14,19 @@
  */
 #pragma once
 
-#include "AP_WindVane_Backend.h"
-
-class AP_WindVane_NMEA : public AP_WindVane_Backend
+class AP_WindVane_NMEA
 {
 public:
     // constructor
-    AP_WindVane_NMEA(AP_WindVane &frontend);
-
-    // initialization
-    void init(const AP_SerialManager& serial_manager) override;
-
-    // update state
-    void update_direction() override;
-    void update_speed() override;
-
-private:
-    // pointer to serial uart
-    AP_HAL::UARTDriver *uart = nullptr; 
-
-    // See if we can read in some data
-    void update();
+    AP_WindVane_NMEA();
+    virtual ~AP_WindVane_NMEA();
 
     // try and decode NMEA message
     bool decode(char c);
+    float get_speed() { return _speed_ms; }
+    float get_wind_dir() { return _wind_dir_deg; }
 
+private:
     // decode each term
     bool decode_latest_term();
 

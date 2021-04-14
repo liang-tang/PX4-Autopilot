@@ -13,9 +13,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <AP_HAL/AP_HAL.h>
-#include "AP_WindVane_NMEA.h"
-#include <AP_SerialManager/AP_SerialManager.h>
+#include "windvane_nmea.h"
+#include <string.h>
 
 /*
     NMEA wind vane library, tested with Calypso Wired sensor,
@@ -23,55 +22,41 @@
     heavily based on RangeFinder NMEA library
 */
 
+#define KM_PER_HOUR_TO_M_PER_SEC 0.27777778f
+
+#define M_PER_SEC_TO_KNOTS 1.94384449f
+#define KNOTS_TO_M_PER_SEC (1/M_PER_SEC_TO_KNOTS)
+
 // constructor
-AP_WindVane_NMEA::AP_WindVane_NMEA(AP_WindVane &frontend) :
-    AP_WindVane_Backend(frontend)
+AP_WindVane_NMEA::AP_WindVane_NMEA()
 {
 }
 
-// init - performs any required initialization for this instance
-void AP_WindVane_NMEA::init(const AP_SerialManager& serial_manager)
+AP_WindVane_NMEA::~AP_WindVane_NMEA()
 {
-    uart = serial_manager.find_serial(AP_SerialManager::SerialProtocol_WindVane, 0);
-    if (uart != nullptr) {
-        uart->begin(serial_manager.find_baudrate(AP_SerialManager::SerialProtocol_WindVane, 0));
-    }
 }
 
-void AP_WindVane_NMEA::update_direction()
-{
-    // Only call update from here if it has not been called already by update speed
-    if (_frontend._speed_sensor_type.get() != _frontend.Speed_type::WINDSPEED_NMEA) {
-        update();
-    }
-}
+// void AP_WindVane_NMEA::update()
+// {
+//     if (uart == nullptr) {
+//         return;
+//     }
 
-void AP_WindVane_NMEA::update_speed()
-{
-    update();
-}
-
-void AP_WindVane_NMEA::update()
-{
-    if (uart == nullptr) {
-        return;
-    }
-
-    // read any available lines from the windvane
-    int16_t nbytes = uart->available();
-    while (nbytes-- > 0) {
-        char c = uart->read();
-        if (decode(c)) {
-            // user may not have NMEA selected for both speed and direction
-            if (_frontend._direction_type.get() == _frontend.WindVaneType::WINDVANE_NMEA) {
-                direction_update_frontend(wrap_PI(radians(_wind_dir_deg + _frontend._dir_analog_bearing_offset.get()) + AP::ahrs().yaw));
-            }
-            if (_frontend._speed_sensor_type.get() == _frontend.Speed_type::WINDSPEED_NMEA) {
-                speed_update_frontend(_speed_ms);
-            }
-        }
-    }
-}
+//     // read any available lines from the windvane
+//     int16_t nbytes = uart->available();
+//     while (nbytes-- > 0) {
+//         char c = uart->read();
+//         if (decode(c)) {
+//             // user may not have NMEA selected for both speed and direction
+//             if (_frontend._direction_type.get() == _frontend.WindVaneType::WINDVANE_NMEA) {
+//                 direction_update_frontend(wrap_PI(radians(_wind_dir_deg + _frontend._dir_analog_bearing_offset.get()) + AP::ahrs().yaw));
+//             }
+//             if (_frontend._speed_sensor_type.get() == _frontend.Speed_type::WINDSPEED_NMEA) {
+//                 speed_update_frontend(_speed_ms);
+//             }
+//         }
+//     }
+// }
 
 // add a single character to the buffer and attempt to decode
 // returns true if a complete sentence was successfully decoded
@@ -81,7 +66,7 @@ bool AP_WindVane_NMEA::decode(char c)
     case ',':
         // end of a term, add to checksum
         _checksum ^= c;
-        FALLTHROUGH;
+        //FALLTHROUGH;
     case '\r':
     case '\n':
     case '*':
@@ -161,13 +146,13 @@ bool AP_WindVane_NMEA::decode_latest_term()
         case 1:
             _wind_dir_deg = strtof(_term, NULL);
             // check for sensible value
-            if (is_negative(_wind_dir_deg) || _wind_dir_deg > 360.0f) {
+            if (_wind_dir_deg < 0 || _wind_dir_deg > 360.0f) {
                 _sentence_valid = false;
             }
             break;
 
         case 2:
-            // we are expecting R for relative wind 
+            // we are expecting R for relative wind
             // (could be T for true wind, maybe add in the future...)
             if (_term[0] != 'R') {
                 _sentence_valid = false;
@@ -188,7 +173,7 @@ bool AP_WindVane_NMEA::decode_latest_term()
             }
             // could also be M for m/s, but we want that anyway so nothing to do
             // check for sensible value
-            if (is_negative(_speed_ms) || _speed_ms > 100.0f) {
+            if (_speed_ms < 0 || _speed_ms > 100.0f) {
                 _sentence_valid = false;
             }
             break;

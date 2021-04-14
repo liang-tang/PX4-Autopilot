@@ -13,8 +13,8 @@ px4_add_board(
 	SERIAL_PORTS
 		GPS1:/dev/ttyS0
 		TEL1:/dev/ttyS1
-		TEL2:/dev/ttyS2
-		TEL4:/dev/ttyS3
+		#TEL2:/dev/ttyS2
+		#TEL4:/dev/ttyS3
 	DRIVERS
 		adc
 		barometer # all available barometer drivers

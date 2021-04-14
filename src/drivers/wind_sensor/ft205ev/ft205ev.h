@@ -55,6 +55,8 @@
 
 #include <mathlib/mathlib.h>
 
+#include "windvane_nmea.h"
+
 #define CONTROLLER_PERIOD_DEFAULT 100000
 
 /**
@@ -135,6 +137,8 @@ private:
 
 	int _serial_fd[2] = {-1, -1};
 	uint8_t _frame_buffer[2][24];
+
+	AP_WindVane_NMEA *windvane_nmea[2];
 
 	uORB::PublicationMulti<windvane_s> _windvane_pub{ORB_ID(windvane)};
 	uORB::Subscription		   _windvane_sub{ORB_ID(windvane)};

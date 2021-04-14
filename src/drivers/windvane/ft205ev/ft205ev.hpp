@@ -72,7 +72,6 @@ public:
 private:
 
 	int init_ports(int port);
-	void update();
 	int collect(int port);
 
 	void Run() override;
@@ -81,8 +80,6 @@ private:
 	void stop();
 
 	char _ports[2][20] {};
-
-	static constexpr int kCONVERSIONINTERVAL{90_ms};
 
 	int _fd[2]{-1, -1};
 

@@ -36,28 +36,6 @@ AP_WindVane_NMEA::~AP_WindVane_NMEA()
 {
 }
 
-// void AP_WindVane_NMEA::update()
-// {
-//     if (uart == nullptr) {
-//         return;
-//     }
-
-//     // read any available lines from the windvane
-//     int16_t nbytes = uart->available();
-//     while (nbytes-- > 0) {
-//         char c = uart->read();
-//         if (decode(c)) {
-//             // user may not have NMEA selected for both speed and direction
-//             if (_frontend._direction_type.get() == _frontend.WindVaneType::WINDVANE_NMEA) {
-//                 direction_update_frontend(wrap_PI(radians(_wind_dir_deg + _frontend._dir_analog_bearing_offset.get()) + AP::ahrs().yaw));
-//             }
-//             if (_frontend._speed_sensor_type.get() == _frontend.Speed_type::WINDSPEED_NMEA) {
-//                 speed_update_frontend(_speed_ms);
-//             }
-//         }
-//     }
-// }
-
 // add a single character to the buffer and attempt to decode
 // returns true if a complete sentence was successfully decoded
 bool AP_WindVane_NMEA::decode(char c)

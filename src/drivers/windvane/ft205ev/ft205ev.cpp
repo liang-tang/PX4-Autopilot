@@ -157,18 +157,9 @@ FT205EV::init_ports(int port)
 	return ret;
 }
 
-void
-FT205EV::update()
-{
-	collect(0);
-	collect(1);
-}
-
 int
 FT205EV::collect(int port)
 {
-	perf_begin(_sample_perf);
-
 	// the buffer for read chars is buflen minus null termination
 	char readbuf[27] {};
 	unsigned readlen = sizeof(readbuf);
@@ -178,7 +169,6 @@ FT205EV::collect(int port)
 	::ioctl(_fd[port], FIONREAD, (unsigned long)&bytes_available);
 
 	if (!bytes_available) {
-		perf_end(_sample_perf);
 		return 0;
 	}
 
@@ -189,9 +179,6 @@ FT205EV::collect(int port)
 
 		if (ret < 0) {
 			PX4_ERR("read err: %d", ret);
-			perf_count(_comms_errors);
-			perf_end(_sample_perf);
-
 			return -EAGAIN;
 		}
 
@@ -209,8 +196,6 @@ FT205EV::collect(int port)
 
 	} while (bytes_available > 0);
 
-	perf_end(_sample_perf);
-
 	return PX4_OK;
 }
 
@@ -219,8 +204,8 @@ FT205EV::start()
 {
 	windvane_nmea[0] = new AP_WindVane_NMEA();
 	windvane_nmea[1] = new AP_WindVane_NMEA();
-	// schedule a cycle to start things (the sensor sends at 100Hz, but we run a bit faster to avoid missing data)
-	ScheduleOnInterval(7_ms);
+	// schedule a cycle to start things (the sensor sends at 10Hz, but we run a bit faster to avoid missing data)
+	ScheduleOnInterval(70_ms);
 }
 
 void
@@ -243,15 +228,18 @@ FT205EV::Run()
 		_fd[1] = ::open(_ports[1], O_RDWR | O_NOCTTY);
 	}
 
-	update();
+	perf_begin(_sample_perf);
 
-	// // perform collection
-	// if (collect() == -EAGAIN) {
-	// 	// reschedule to grab the missing bits, time to transmit 9 bytes @ 115200 bps
-	// 	ScheduleClear();
-	// 	ScheduleOnInterval(7_ms, 87 * 9);
-	// 	return;
-	// }
+	if (collect(0) == -EAGAIN) {
+		perf_count(_comms_errors);
+
+	}
+
+	if (collect(1) == -EAGAIN) {
+		perf_count(_comms_errors);
+	}
+
+	perf_end(_sample_perf);
 }
 
 void

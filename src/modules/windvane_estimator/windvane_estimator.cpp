@@ -73,7 +73,7 @@ int WINDVANE_ESTIMATOR::task_spawn(int argc, char *argv[])
 	_task_id = px4_task_spawn_cmd("windvane_estimator",
 				      SCHED_DEFAULT,
 				      SCHED_PRIORITY_DEFAULT,
-				      1024,
+				      1024 * 4,
 				      (px4_main_t)&run_trampoline,
 				      (char *const *)argv);
 
@@ -144,9 +144,6 @@ void WINDVANE_ESTIMATOR::run()
 	fds[0].fd = sensor_combined_sub;
 	fds[0].events = POLLIN;
 
-	// initialize parameters
-	parameters_update(true);
-
 	while (!should_exit()) {
 
 		// wait for up to 1000ms for data
@@ -170,23 +167,34 @@ void WINDVANE_ESTIMATOR::run()
 
 		}
 
-		parameters_update();
+		windvane_s windvane{};
+		windvane.timestamp = hrt_absolute_time();
+		_windvane_pub.publish(windvane);
+
+		if (_windvane_sub.updated()) {
+			_windvane_sub.copy(&windvane);
+		}
+
+		if (_att_sub.updated()) {
+			_att_sub.copy(&attitude);
+			const matrix::Eulerf euler(matrix::Quatf(attitude.q));
+			const float roll(euler.phi());
+			const float pitch(euler.theta());
+			const float yaw(euler.psi());
+
+			PX4_INFO("roll pitch yaw %.2f %.2f %.2f\n", (double)roll, (double)pitch, (double)yaw);
+		}
+
+		if (_local_pos_sub.updated()) {
+			_local_pos_sub.copy(&local_pos);
+		}
+
+		if (_global_pos_sub.updated()) {
+			_global_pos_sub.copy(&global_pos);
+		}
 	}
 
 	orb_unsubscribe(sensor_combined_sub);
-}
-
-void WINDVANE_ESTIMATOR::parameters_update(bool force)
-{
-	// check for parameter updates
-	if (_parameter_update_sub.updated() || force) {
-		// clear update
-		parameter_update_s update;
-		_parameter_update_sub.copy(&update);
-
-		// update parameters from storage
-		updateParams();
-	}
 }
 
 int WINDVANE_ESTIMATOR::print_usage(const char *reason)

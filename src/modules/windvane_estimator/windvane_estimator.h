@@ -38,6 +38,12 @@
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/parameter_update.h>
 
+#include <uORB/Publication.hpp>
+#include <uORB/topics/windvane.h>
+#include <uORB/topics/vehicle_attitude.h>
+#include <uORB/topics/vehicle_local_position.h>
+#include <uORB/topics/vehicle_global_position.h>
+
 extern "C" __EXPORT int windvane_estimator_main(int argc, char *argv[]);
 
 class WINDVANE_ESTIMATOR : public ModuleBase<WINDVANE_ESTIMATOR>, public ModuleParams
@@ -66,22 +72,18 @@ public:
 	int print_status() override;
 
 private:
-
-	/**
-	 * Check for parameter changes and update them if needed.
-	 * @param parameter_update_sub uorb subscription to parameter_update
-	 * @param force for a parameter update
-	 */
-	void parameters_update(bool force = false);
-
-
-	DEFINE_PARAMETERS(
-		(ParamInt<px4::params::SYS_AUTOSTART>) _param_sys_autostart,   /**< example parameter */
-		(ParamInt<px4::params::SYS_AUTOCONFIG>) _param_sys_autoconfig  /**< another parameter */
-	)
+	vehicle_attitude_s attitude{};
+	vehicle_local_position_s local_pos{};
+	vehicle_global_position_s global_pos{};
 
 	// Subscriptions
 	uORB::Subscription	_parameter_update_sub{ORB_ID(parameter_update)};
 
+	uORB::Publication<windvane_s> _windvane_pub{ORB_ID(windvane)};
+	uORB::Subscription _windvane_sub{ORB_ID(windvane)};
+
+	uORB::Subscription _att_sub{ORB_ID(vehicle_attitude)};
+	uORB::Subscription _local_pos_sub{ORB_ID(vehicle_local_position)};
+	uORB::Subscription _global_pos_sub{ORB_ID(vehicle_global_position)};
 };
 

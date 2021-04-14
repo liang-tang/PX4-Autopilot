@@ -80,18 +80,13 @@ private:
 	void start();
 	void stop();
 
-	char _linebuf[30] {};
 	char _ports[2][20] {};
 
-	static constexpr int kCONVERSIONINTERVAL{9_ms};
+	static constexpr int kCONVERSIONINTERVAL{90_ms};
 
 	int _fd[2]{-1, -1};
 
-	unsigned int _linebuf_index{0};
-
 	AP_WindVane_NMEA *windvane_nmea[2];
-
-	hrt_abstime _last_read{0};
 
 	perf_counter_t _comms_errors{perf_alloc(PC_COUNT, MODULE_NAME": com_err")};
 	perf_counter_t _sample_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": read")};

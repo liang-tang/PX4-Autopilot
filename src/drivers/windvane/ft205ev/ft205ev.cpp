@@ -56,6 +56,16 @@ FT205EV::~FT205EV()
 	// make sure we are truly inactive
 	stop();
 
+	if (windvane_nmea[0] != nullptr) {
+		delete windvane_nmea[0] ;
+		windvane_nmea[0] = nullptr;
+	}
+
+	if (windvane_nmea[1] != nullptr) {
+		delete windvane_nmea[1] ;
+		windvane_nmea[1] = nullptr;
+	}
+
 	perf_free(_sample_perf);
 	perf_free(_comms_errors);
 }
@@ -159,15 +169,9 @@ FT205EV::collect(int port)
 {
 	perf_begin(_sample_perf);
 
-	// clear buffer if last read was too long ago
-	int64_t read_elapsed = hrt_elapsed_time(&_last_read);
-
 	// the buffer for read chars is buflen minus null termination
-	char readbuf[sizeof(_linebuf)] {};
-	unsigned readlen = sizeof(readbuf) - 1;
-
-	int ret = 0;
-	float distance_m = -1.0f;
+	char readbuf[27] {};
+	unsigned readlen = sizeof(readbuf);
 
 	// Check the number of bytes available in the buffer
 	int bytes_available = 0;
@@ -178,31 +182,18 @@ FT205EV::collect(int port)
 		return 0;
 	}
 
-	//PX4_INFO("len %d\n", bytes_available);
-
+	int ret = 0;
 	do {
 		// read from the sensor (uart buffer)
 		ret = ::read(_fd[port], &readbuf[0], readlen);
-
-		//PX4_INFO("port %d----%s\n", port, readbuf);
 
 		if (ret < 0) {
 			PX4_ERR("read err: %d", ret);
 			perf_count(_comms_errors);
 			perf_end(_sample_perf);
 
-			// only throw an error if we time out
-			if (read_elapsed > (kCONVERSIONINTERVAL * 2)) {
-				/* flush anything in RX buffer */
-				tcflush(_fd[port], TCIFLUSH);
-				return ret;
-
-			} else {
-				return -EAGAIN;
-			}
+			return -EAGAIN;
 		}
-
-		_last_read = hrt_absolute_time();
 
 		// parse buffer
 		for (int i = 0; i < ret; i++) {
@@ -211,20 +202,12 @@ FT205EV::collect(int port)
 				float wind_dir = windvane_nmea[port]->get_wind_dir();
 				PX4_INFO("windvane_nmea[%d]: speed %.2f dir %.2f\n", port, (double)speed, (double)wind_dir);
 			}
-
-			//tfmini_parse(readbuf[i], _linebuf, &_linebuf_index, &_parse_state, &distance_m);
 		}
 
 		// bytes left to parse
 		bytes_available -= ret;
 
 	} while (bytes_available > 0);
-
-	// no valid measurement after parsing buffer
-	if (distance_m < 0.0f) {
-		perf_end(_sample_perf);
-		return -EAGAIN;
-	}
 
 	perf_end(_sample_perf);
 

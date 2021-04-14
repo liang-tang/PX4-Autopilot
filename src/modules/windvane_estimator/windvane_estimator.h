@@ -40,6 +40,7 @@
 
 #include <uORB/Publication.hpp>
 #include <uORB/topics/windvane.h>
+#include <uORB/topics/windvane_sensor.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_global_position.h>
@@ -77,10 +78,7 @@ private:
 	vehicle_global_position_s global_pos{};
 
 	// Subscriptions
-	uORB::Subscription	_parameter_update_sub{ORB_ID(parameter_update)};
-
 	uORB::Publication<windvane_s> _windvane_pub{ORB_ID(windvane)};
-	uORB::Subscription _windvane_sub{ORB_ID(windvane)};
 
 	uORB::Subscription _att_sub{ORB_ID(vehicle_attitude)};
 	uORB::Subscription _local_pos_sub{ORB_ID(vehicle_local_position)};

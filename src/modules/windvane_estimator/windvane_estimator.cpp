@@ -137,17 +137,18 @@ WINDVANE_ESTIMATOR::WINDVANE_ESTIMATOR(int example_param, bool example_flag)
 
 void WINDVANE_ESTIMATOR::run()
 {
-	// Example: run the loop synchronized to the sensor_combined topic publication
-	int sensor_combined_sub = orb_subscribe(ORB_ID(sensor_combined));
+	int windvane_sensor_sub = orb_subscribe(ORB_ID(windvane_sensor));
 
 	px4_pollfd_struct_t fds[1];
-	fds[0].fd = sensor_combined_sub;
+	fds[0].fd = windvane_sensor_sub;
 	fds[0].events = POLLIN;
+
+	windvane_sensor_s windvane_sensor{};
 
 	while (!should_exit()) {
 
-		// wait for up to 100ms for data
-		int pret = px4_poll(fds, (sizeof(fds) / sizeof(fds[0])), 100);
+		// wait for up to 1000ms for data
+		int pret = px4_poll(fds, (sizeof(fds) / sizeof(fds[0])), 1000);
 
 		if (pret == 0) {
 			// Timeout: let the loop run anyway, don't do `continue` here
@@ -159,30 +160,20 @@ void WINDVANE_ESTIMATOR::run()
 			continue;
 
 		} else if (fds[0].revents & POLLIN) {
-
-			struct sensor_combined_s sensor_combined;
-			orb_copy(ORB_ID(sensor_combined), sensor_combined_sub, &sensor_combined);
-			// TODO: do something with the data...
-			PX4_INFO("%llu\n", sensor_combined.timestamp);
-
-		}
-
-		windvane_s windvane{};
-		windvane.timestamp = hrt_absolute_time();
-		_windvane_pub.publish(windvane);
-
-		if (_windvane_sub.updated()) {
-			_windvane_sub.copy(&windvane);
+			orb_copy(ORB_ID(windvane_sensor), windvane_sensor_sub, &windvane_sensor);
+			PX4_INFO("%llu %.2f %.2f %.2f %.2f\n", windvane_sensor.timestamp,
+				(double)windvane_sensor.speed_hor, (double)windvane_sensor.angle_hor,
+				(double)windvane_sensor.speed_ver, (double)windvane_sensor.angle_ver);
 		}
 
 		if (_att_sub.updated()) {
 			_att_sub.copy(&attitude);
-			const matrix::Eulerf euler(matrix::Quatf(attitude.q));
-			const float roll(euler.phi());
-			const float pitch(euler.theta());
-			const float yaw(euler.psi());
+			// const matrix::Eulerf euler(matrix::Quatf(attitude.q));
+			// const float roll(euler.phi());
+			// const float pitch(euler.theta());
+			// const float yaw(euler.psi());
 
-			PX4_INFO("roll pitch yaw %.2f %.2f %.2f\n", (double)roll, (double)pitch, (double)yaw);
+			// PX4_INFO("roll pitch yaw %.2f %.2f %.2f\n", (double)roll, (double)pitch, (double)yaw);
 		}
 
 		if (_local_pos_sub.updated()) {
@@ -192,9 +183,13 @@ void WINDVANE_ESTIMATOR::run()
 		if (_global_pos_sub.updated()) {
 			_global_pos_sub.copy(&global_pos);
 		}
+
+		windvane_s windvane{};
+		windvane.timestamp = hrt_absolute_time();
+		_windvane_pub.publish(windvane);
 	}
 
-	orb_unsubscribe(sensor_combined_sub);
+	orb_unsubscribe(windvane_sensor_sub);
 }
 
 int WINDVANE_ESTIMATOR::print_usage(const char *reason)

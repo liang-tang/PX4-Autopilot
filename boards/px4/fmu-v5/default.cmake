@@ -59,7 +59,8 @@ px4_add_board(
 		test_ppm
 		tone_alarm
 		uavcan
-		wind_sensor
+		#wind_sensor
+		windvane
 	MODULES
 		airspeed_selector
 		attitude_estimator_q

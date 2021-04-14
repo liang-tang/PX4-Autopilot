@@ -185,9 +185,7 @@ FT205EV::collect(int port)
 		// parse buffer
 		for (int i = 0; i < ret; i++) {
 			if (windvane_nmea[port]->decode(readbuf[i])) {
-				float speed = windvane_nmea[port]->get_speed();
-				float wind_dir = windvane_nmea[port]->get_wind_dir();
-				PX4_INFO("windvane_nmea[%d]: speed %.2f dir %.2f\n", port, (double)speed, (double)wind_dir);
+				updated[port] = true;
 			}
 		}
 
@@ -237,6 +235,26 @@ FT205EV::Run()
 
 	if (collect(1) == -EAGAIN) {
 		perf_count(_comms_errors);
+	}
+
+	if (updated[0] && updated[1]) {
+		float speed_hor = windvane_nmea[0]->get_wind_speed();
+		float angle_hor = windvane_nmea[0]->get_wind_dir();
+
+		float speed_ver = windvane_nmea[1]->get_wind_speed();
+		float angle_ver = windvane_nmea[1]->get_wind_dir();
+
+		windvane_sensor_s windvane_sensor{};
+		windvane_sensor.timestamp = hrt_absolute_time();
+		windvane_sensor.speed_hor = speed_hor;
+		windvane_sensor.angle_hor = angle_hor;
+		windvane_sensor.speed_ver = speed_ver;
+		windvane_sensor.angle_ver = angle_ver;
+
+		_windvane_sensor_pub.publish(windvane_sensor);
+
+		updated[0] = false;
+		updated[1] = false;
 	}
 
 	perf_end(_sample_perf);

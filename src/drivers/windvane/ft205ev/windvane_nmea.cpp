@@ -71,7 +71,7 @@ bool AP_WindVane_NMEA::decode(char c)
         _checksum = 0;
         _term_is_checksum = false;
         _wind_dir_deg = -1.0f;
-        _speed_ms = -1.0f;
+        _wind_speed_ms = -1.0f;
         _sentence_done = false;
         return false;
     }
@@ -138,20 +138,20 @@ bool AP_WindVane_NMEA::decode_latest_term()
             break;
 
         case 3:
-            _speed_ms = strtof(_term, NULL);
+            _wind_speed_ms = strtof(_term, NULL);
             break;
 
         case 4:
             if (_term[0] == 'K') {
                 // convert from km/h to m/s
-                _speed_ms *= KM_PER_HOUR_TO_M_PER_SEC;
+                _wind_speed_ms *= KM_PER_HOUR_TO_M_PER_SEC;
             } else if (_term[0] == 'N') {
                 // convert from Knots to m/s
-                _speed_ms *= KNOTS_TO_M_PER_SEC;
+                _wind_speed_ms *= KNOTS_TO_M_PER_SEC;
             }
             // could also be M for m/s, but we want that anyway so nothing to do
             // check for sensible value
-            if (_speed_ms < 0 || _speed_ms > 100.0f) {
+            if (_wind_speed_ms < 0 || _wind_speed_ms > 100.0f) {
                 _sentence_valid = false;
             }
             break;

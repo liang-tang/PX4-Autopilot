@@ -146,8 +146,8 @@ void WINDVANE_ESTIMATOR::run()
 
 	while (!should_exit()) {
 
-		// wait for up to 1000ms for data
-		int pret = px4_poll(fds, (sizeof(fds) / sizeof(fds[0])), 1000);
+		// wait for up to 100ms for data
+		int pret = px4_poll(fds, (sizeof(fds) / sizeof(fds[0])), 100);
 
 		if (pret == 0) {
 			// Timeout: let the loop run anyway, don't do `continue` here

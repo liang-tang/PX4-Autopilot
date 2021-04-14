@@ -168,6 +168,7 @@ set(msg_files
 	wind_estimate.msg
 	yaw_estimator_status.msg
 	windvane.msg
+	windvane_sensor.msg
 )
 
 set(deprecated_msgs

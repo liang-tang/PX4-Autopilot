@@ -52,6 +52,9 @@
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 
+#include <uORB/Publication.hpp>
+#include <uORB/topics/windvane_sensor.h>
+
 #include "windvane_nmea.h"
 
 #define FT205EV_DEFAULT_PORT1 "/dev/ttyS2"
@@ -84,8 +87,10 @@ private:
 	int _fd[2]{-1, -1};
 
 	AP_WindVane_NMEA *windvane_nmea[2];
+	bool updated[2];
+
+	uORB::Publication<windvane_sensor_s> _windvane_sensor_pub{ORB_ID(windvane_sensor)};
 
 	perf_counter_t _comms_errors{perf_alloc(PC_COUNT, MODULE_NAME": com_err")};
 	perf_counter_t _sample_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": read")};
-
 };

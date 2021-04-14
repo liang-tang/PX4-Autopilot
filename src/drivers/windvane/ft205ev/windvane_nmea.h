@@ -23,7 +23,7 @@ public:
 
     // try and decode NMEA message
     bool decode(char c);
-    float get_speed() { return _speed_ms; }
+    float get_wind_speed() { return _wind_speed_ms; }
     float get_wind_dir() { return _wind_dir_deg; }
 
 private:
@@ -34,7 +34,7 @@ private:
     int16_t char_to_hex(char a);
 
     // latest values read in
-    float _speed_ms;
+    float _wind_speed_ms;
     float _wind_dir_deg;
 
     char _term[15];            // buffer for the current term within the current sentence

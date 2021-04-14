@@ -52,14 +52,15 @@
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 
-#define TFMINI_DEFAULT_PORT "/dev/ttyS3"
+#define FT205EV_DEFAULT_PORT1 "/dev/ttyS2"
+#define FT205EV_DEFAULT_PORT2 "/dev/ttyS3"
 
 using namespace time_literals;
 
 class FT205EV : public px4::ScheduledWorkItem
 {
 public:
-	FT205EV(const char *port);
+	FT205EV(const char *port1, const char *port2);
 	virtual ~FT205EV();
 
 	int init();
@@ -76,7 +77,8 @@ private:
 	void stop();
 
 	char _linebuf[30] {};
-	char _port[20] {};
+	char _port1[20] {};
+	char _port2[20] {};
 
 	static constexpr int kCONVERSIONINTERVAL{9_ms};
 

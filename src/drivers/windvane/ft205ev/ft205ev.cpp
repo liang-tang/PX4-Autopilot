@@ -35,14 +35,20 @@
 
 #include <fcntl.h>
 
-FT205EV::FT205EV(const char *port) :
-	ScheduledWorkItem(MODULE_NAME, px4::serial_port_to_wq(port))
+FT205EV::FT205EV(const char *port1, const char *port2) :
+	ScheduledWorkItem(MODULE_NAME, px4::serial_port_to_wq(port1))
 {
 	// store port name
-	strncpy(_port, port, sizeof(_port) - 1);
+	strncpy(_port1, port1, sizeof(_port1) - 1);
 
 	// enforce null termination
-	_port[sizeof(_port) - 1] = '\0';
+	_port1[sizeof(_port1) - 1] = '\0';
+
+	// store port name
+	strncpy(_port2, port2, sizeof(_port2) - 1);
+
+	// enforce null termination
+	_port2[sizeof(_port2) - 1] = '\0';
 }
 
 FT205EV::~FT205EV()
@@ -63,7 +69,7 @@ FT205EV::init()
 	do { // create a scope to handle exit conditions using break
 
 		// open fd
-		_fd = ::open(_port, O_RDWR | O_NOCTTY);
+		_fd = ::open(_port1, O_RDWR | O_NOCTTY);
 
 		if (_fd < 0) {
 			PX4_ERR("Error opening fd");
@@ -223,7 +229,7 @@ FT205EV::Run()
 	// fds initialized?
 	if (_fd < 0) {
 		// open fd
-		_fd = ::open(_port, O_RDWR | O_NOCTTY);
+		_fd = ::open(_port1, O_RDWR | O_NOCTTY);
 	}
 
 	// perform collection
@@ -238,7 +244,7 @@ FT205EV::Run()
 void
 FT205EV::print_info()
 {
-	printf("Using port '%s'\n", _port);
+	printf("Using port '%s'\n", _port1);
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
 }

@@ -43,13 +43,13 @@ namespace ft205ev
 
 FT205EV	*g_dev{nullptr};
 
-int start(const char *port, uint8_t rotation);
+int start(const char *port1, const char *port2);
 int status();
 int stop();
 int usage();
 
 int
-start(const char *port, uint8_t rotation)
+start(const char *port1, const char *port2)
 {
 	if (g_dev != nullptr) {
 		PX4_ERR("already started");
@@ -57,7 +57,7 @@ start(const char *port, uint8_t rotation)
 	}
 
 	// Instantiate the driver.
-	g_dev = new FT205EV(port);
+	g_dev = new FT205EV(port1, port2);
 
 	if (g_dev == nullptr) {
 		PX4_ERR("driver start failed");
@@ -140,19 +140,19 @@ $ tfmini stop
 extern "C" __EXPORT int ft205ev_main(int argc, char *argv[])
 {
 	int ch = 0;
-	uint8_t rotation = 1;//distance_sensor_s::ROTATION_DOWNWARD_FACING;
-	const char *device_path = TFMINI_DEFAULT_PORT;
+	const char *device_path1 = FT205EV_DEFAULT_PORT1;
+	const char *device_path2 = FT205EV_DEFAULT_PORT2;
 	int myoptind = 1;
 	const char *myoptarg = nullptr;
 
-	while ((ch = px4_getopt(argc, argv, "R:d:", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = px4_getopt(argc, argv, "e:e:", &myoptind, &myoptarg)) != EOF) {
 		switch (ch) {
-		case 'R':
-			rotation = (uint8_t)atoi(myoptarg);
+		case 'd':
+			device_path1 = myoptarg;
 			break;
 
-		case 'd':
-			device_path = myoptarg;
+		case 'e':
+			device_path2 = myoptarg;
 			break;
 
 		default:
@@ -167,8 +167,8 @@ extern "C" __EXPORT int ft205ev_main(int argc, char *argv[])
 	}
 
 	if (!strcmp(argv[myoptind], "start")) {
-		if (strcmp(device_path, "") != 0) {
-			return ft205ev::start(device_path, rotation);
+		if (strcmp(device_path1, "") != 0 && strcmp(device_path2, "") != 0) {
+			return ft205ev::start(device_path1, device_path2);
 
 		} else {
 			PX4_WARN("Please specify device path!");

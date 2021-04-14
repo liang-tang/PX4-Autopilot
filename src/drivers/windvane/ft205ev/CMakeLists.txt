@@ -33,8 +33,11 @@
 px4_add_module(
 	MODULE drivers__ft205ev
 	MAIN ft205ev
+	COMPILE_FLAGS
+		-Wno-implicit-fallthrough # TODO: fix and remove
 	SRCS
 		ft205ev.cpp
 		ft205ev.hpp
 		ft205ev_main.cpp
+		windvane_nmea.cpp
 	)

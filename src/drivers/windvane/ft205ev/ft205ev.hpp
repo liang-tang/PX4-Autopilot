@@ -52,6 +52,8 @@
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 
+#include "windvane_nmea.h"
+
 #define FT205EV_DEFAULT_PORT1 "/dev/ttyS2"
 #define FT205EV_DEFAULT_PORT2 "/dev/ttyS3"
 
@@ -86,6 +88,8 @@ private:
 	int _fd[2]{-1, -1};
 
 	unsigned int _linebuf_index{0};
+
+	AP_WindVane_NMEA *windvane_nmea[2];
 
 	hrt_abstime _last_read{0};
 

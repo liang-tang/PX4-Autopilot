@@ -184,7 +184,7 @@ FT205EV::collect(int port)
 		// read from the sensor (uart buffer)
 		ret = ::read(_fd[port], &readbuf[0], readlen);
 
-		PX4_INFO("port %d----%s\n", port, readbuf);
+		//PX4_INFO("port %d----%s\n", port, readbuf);
 
 		if (ret < 0) {
 			PX4_ERR("read err: %d", ret);
@@ -206,6 +206,12 @@ FT205EV::collect(int port)
 
 		// parse buffer
 		for (int i = 0; i < ret; i++) {
+			if (windvane_nmea[port]->decode(readbuf[i])) {
+				float speed = windvane_nmea[port]->get_speed();
+				float wind_dir = windvane_nmea[port]->get_wind_dir();
+				PX4_INFO("windvane_nmea[%d]: speed %.2f dir %.2f\n", port, (double)speed, (double)wind_dir);
+			}
+
 			//tfmini_parse(readbuf[i], _linebuf, &_linebuf_index, &_parse_state, &distance_m);
 		}
 
@@ -228,6 +234,8 @@ FT205EV::collect(int port)
 void
 FT205EV::start()
 {
+	windvane_nmea[0] = new AP_WindVane_NMEA();
+	windvane_nmea[1] = new AP_WindVane_NMEA();
 	// schedule a cycle to start things (the sensor sends at 100Hz, but we run a bit faster to avoid missing data)
 	ScheduleOnInterval(7_ms);
 }

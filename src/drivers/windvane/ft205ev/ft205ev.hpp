@@ -69,7 +69,9 @@ public:
 
 private:
 
-	int collect();
+	int init_ports(int port);
+	void update();
+	int collect(int port);
 
 	void Run() override;
 
@@ -77,12 +79,11 @@ private:
 	void stop();
 
 	char _linebuf[30] {};
-	char _port1[20] {};
-	char _port2[20] {};
+	char _ports[2][20] {};
 
 	static constexpr int kCONVERSIONINTERVAL{9_ms};
 
-	int _fd{-1};
+	int _fd[2]{-1, -1};
 
 	unsigned int _linebuf_index{0};
 

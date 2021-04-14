@@ -39,16 +39,16 @@ FT205EV::FT205EV(const char *port1, const char *port2) :
 	ScheduledWorkItem(MODULE_NAME, px4::serial_port_to_wq(port1))
 {
 	// store port name
-	strncpy(_port1, port1, sizeof(_port1) - 1);
+	strncpy(_ports[0], port1, sizeof(_ports[0]) - 1);
 
 	// enforce null termination
-	_port1[sizeof(_port1) - 1] = '\0';
+	_ports[0][sizeof(_ports[0]) - 1] = '\0';
 
 	// store port name
-	strncpy(_port2, port2, sizeof(_port2) - 1);
+	strncpy(_ports[1], port2, sizeof(_ports[1]) - 1);
 
 	// enforce null termination
-	_port2[sizeof(_port2) - 1] = '\0';
+	_ports[1][sizeof(_ports[1]) - 1] = '\0';
 }
 
 FT205EV::~FT205EV()
@@ -63,15 +63,27 @@ FT205EV::~FT205EV()
 int
 FT205EV::init()
 {
+	int ret1 = init_ports(0);
+	int ret2 = init_ports(1);
+	if (ret1 == PX4_OK && ret2 == PX4_OK) {
+		start();
+	}
+
+	return ret1 & ret2;
+}
+
+int
+FT205EV::init_ports(int port)
+{
 	// status
 	int ret = 0;
 
 	do { // create a scope to handle exit conditions using break
 
 		// open fd
-		_fd = ::open(_port1, O_RDWR | O_NOCTTY);
+		_fd[port] = ::open(_ports[port], O_RDWR | O_NOCTTY);
 
-		if (_fd < 0) {
+		if (_fd[port] < 0) {
 			PX4_ERR("Error opening fd");
 			return -1;
 		}
@@ -81,7 +93,7 @@ FT205EV::init()
 		termios uart_config{};
 		int termios_state{};
 
-		tcgetattr(_fd, &uart_config);
+		tcgetattr(_fd[port], &uart_config);
 
 		// clear ONLCR flag (which appends a CR for every LF)
 		uart_config.c_oflag &= ~ONLCR;
@@ -99,7 +111,7 @@ FT205EV::init()
 			break;
 		}
 
-		if ((termios_state = tcsetattr(_fd, TCSANOW, &uart_config)) < 0) {
+		if ((termios_state = tcsetattr(_fd[port], TCSANOW, &uart_config)) < 0) {
 			PX4_ERR("baud %d ATTR", termios_state);
 			ret = -1;
 			break;
@@ -121,7 +133,7 @@ FT205EV::init()
 		uart_config.c_cc[VMIN] = 1;
 		uart_config.c_cc[VTIME] = 1;
 
-		if (_fd < 0) {
+		if (_fd[port] < 0) {
 			PX4_ERR("FAIL: laser fd");
 			ret = -1;
 			break;
@@ -129,18 +141,21 @@ FT205EV::init()
 	} while (0);
 
 	// close the fd
-	::close(_fd);
-	_fd = -1;
-
-	if (ret == PX4_OK) {
-		start();
-	}
+	::close(_fd[port]);
+	_fd[port] = -1;
 
 	return ret;
 }
 
+void
+FT205EV::update()
+{
+	collect(0);
+	collect(1);
+}
+
 int
-FT205EV::collect()
+FT205EV::collect(int port)
 {
 	perf_begin(_sample_perf);
 
@@ -156,7 +171,7 @@ FT205EV::collect()
 
 	// Check the number of bytes available in the buffer
 	int bytes_available = 0;
-	::ioctl(_fd, FIONREAD, (unsigned long)&bytes_available);
+	::ioctl(_fd[port], FIONREAD, (unsigned long)&bytes_available);
 
 	if (!bytes_available) {
 		perf_end(_sample_perf);
@@ -167,9 +182,9 @@ FT205EV::collect()
 
 	do {
 		// read from the sensor (uart buffer)
-		ret = ::read(_fd, &readbuf[0], readlen);
+		ret = ::read(_fd[port], &readbuf[0], readlen);
 
-		PX4_INFO("----%s\n", readbuf);
+		PX4_INFO("port %d----%s\n", port, readbuf);
 
 		if (ret < 0) {
 			PX4_ERR("read err: %d", ret);
@@ -179,7 +194,7 @@ FT205EV::collect()
 			// only throw an error if we time out
 			if (read_elapsed > (kCONVERSIONINTERVAL * 2)) {
 				/* flush anything in RX buffer */
-				tcflush(_fd, TCIFLUSH);
+				tcflush(_fd[port], TCIFLUSH);
 				return ret;
 
 			} else {
@@ -227,24 +242,31 @@ void
 FT205EV::Run()
 {
 	// fds initialized?
-	if (_fd < 0) {
+	if (_fd[0] < 0) {
 		// open fd
-		_fd = ::open(_port1, O_RDWR | O_NOCTTY);
+		_fd[0] = ::open(_ports[0], O_RDWR | O_NOCTTY);
 	}
 
-	// perform collection
-	if (collect() == -EAGAIN) {
-		// reschedule to grab the missing bits, time to transmit 9 bytes @ 115200 bps
-		ScheduleClear();
-		ScheduleOnInterval(7_ms, 87 * 9);
-		return;
+	if (_fd[1] < 0) {
+		// open fd
+		_fd[1] = ::open(_ports[1], O_RDWR | O_NOCTTY);
 	}
+
+	update();
+
+	// // perform collection
+	// if (collect() == -EAGAIN) {
+	// 	// reschedule to grab the missing bits, time to transmit 9 bytes @ 115200 bps
+	// 	ScheduleClear();
+	// 	ScheduleOnInterval(7_ms, 87 * 9);
+	// 	return;
+	// }
 }
 
 void
 FT205EV::print_info()
 {
-	printf("Using port '%s'\n", _port1);
+	printf("Using port '%s' '%s'\n", _ports[0], _ports[1]);
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
 }

@@ -161,9 +161,9 @@ void WINDVANE_ESTIMATOR::run()
 
 		} else if (fds[0].revents & POLLIN) {
 			orb_copy(ORB_ID(windvane_sensor), windvane_sensor_sub, &windvane_sensor);
-			PX4_INFO("%llu %.2f %.2f %.2f %.2f\n", windvane_sensor.timestamp,
-				(double)windvane_sensor.speed_hor, (double)windvane_sensor.angle_hor,
-				(double)windvane_sensor.speed_ver, (double)windvane_sensor.angle_ver);
+			// PX4_INFO("%llu %.2f %.2f %.2f %.2f\n", windvane_sensor.timestamp,
+			// 	(double)windvane_sensor.speed_hor, (double)windvane_sensor.angle_hor,
+			// 	(double)windvane_sensor.speed_ver, (double)windvane_sensor.angle_ver);
 		}
 
 		if (_att_sub.updated()) {

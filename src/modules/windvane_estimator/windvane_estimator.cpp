@@ -40,7 +40,6 @@
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/sensor_combined.h>
 
-
 int WINDVANE_ESTIMATOR::print_status()
 {
 	PX4_INFO("Running");
@@ -204,12 +203,27 @@ void WINDVANE_ESTIMATOR::log_on_sdcard()
 	PX4_INFO("%llu %.2f %.2f %.2f %.2f\n", windvane_sensor.timestamp,
 		(double)windvane_sensor.speed_hor, (double)windvane_sensor.angle_hor,
 		(double)windvane_sensor.speed_ver, (double)windvane_sensor.angle_ver);
+	const matrix::Eulerf euler(matrix::Quatf(attitude.q));
+	const float roll(euler.phi());
+	const float pitch(euler.theta());
+	const float yaw(euler.psi());
+
 	char *file = nullptr;
-	if (asprintf(&file, "%.2f,%.2f,%.2f,%.2f\n",
-		(double)windvane_sensor.speed_hor,
-		(double)windvane_sensor.angle_hor,
-		(double)windvane_sensor.speed_ver,
-		(double)windvane_sensor.angle_ver) < 0) {
+	if (asprintf(&file, "%llu,"
+			    "%.2f,%.2f,%.2f,%.2f," //raw
+			    "%.2f,%.2f,%.2f," // attitude
+			    "%.2f,%.2f,%.2f," // ground_speed
+			    "%.7f,%.7f,%.2f," // Latitude Longitude Alt
+			    "%.2f,%.2f,%.2f," // Vax, Vay, Vax
+			    "%.2f,%.2f\n",    // Vwxy,0wxy
+		windvane_sensor.timestamp,
+		(double)windvane_sensor.speed_hor, (double)windvane_sensor.angle_hor,
+		(double)windvane_sensor.speed_ver, (double)windvane_sensor.angle_ver,
+		(double)math::degrees(roll), (double)math::degrees(pitch), (double)math::degrees(yaw),
+		(double)local_pos.vx, (double)local_pos.vy, (double)local_pos.vz,
+		global_pos.lat, global_pos.lon, (double)global_pos.alt,
+		0,0,0,
+		0,0) < 0) {
 		return;
 	}
 

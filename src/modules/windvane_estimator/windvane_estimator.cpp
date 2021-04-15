@@ -40,6 +40,13 @@
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/sensor_combined.h>
 
+#include <dirent.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <string.h>
+#include <stdlib.h>
+#include <time.h>
+
 #define GPS_EPOCH_SECS ((time_t)1234567890ULL)
 
 int WINDVANE_ESTIMATOR::print_status()
@@ -222,12 +229,21 @@ void WINDVANE_ESTIMATOR::log_on_sdcard()
 		return;
 	}
 
-	char time_now_str[16] = "";
-	strftime(time_now_str, sizeof(time_now_str), "%m%d_%H%M%S", &tt);
+	char time_now_str[32] = "";
+	strftime(time_now_str, sizeof(time_now_str), "%Y_%m_%d-%H_%M_%S", &tt);
 	PX4_INFO("time now: %s\n", time_now_str);
 
 	if (_fd == -1) {
-		char log_file_name_str[40] = "";
+		// char log_dir[40] = "";
+		// strftime(log_dir, sizeof(log_dir), PX4_STORAGEDIR"/""%Y-%m-%d", &tt);
+		// int mkdir_ret = mkdir(log_dir, S_IRWXU | S_IRWXG | S_IRWXO);
+
+		// if (mkdir_ret != OK && errno != EEXIST) {
+		// 	PX4_ERR("failed creating new dir: %s", log_dir);
+		// 	return ;
+		// }
+
+		char log_file_name_str[64] = "";
 		snprintf(log_file_name_str, sizeof(log_file_name_str), PX4_STORAGEDIR"/%s.csv", time_now_str);
 		PX4_INFO("log file name: %s\n", log_file_name_str);
 

@@ -40,6 +40,8 @@
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/sensor_combined.h>
 
+#define GPS_EPOCH_SECS ((time_t)1234567890ULL)
+
 int WINDVANE_ESTIMATOR::print_status()
 {
 	PX4_INFO("Running");
@@ -184,6 +186,12 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 
 	// PX4_INFO("roll pitch yaw %.2f %.2f %.2f\n", (double)roll, (double)pitch, (double)yaw);
 
+	matrix::Vector3f rel_wind(0, 0, 0);
+	matrix::Dcmf R_body_to_earth(matrix::Quatf(attitude.q));
+	rel_wind = R_body_to_earth.transpose() * rel_wind;
+
+	//PX4_INFO("222: %.2lf %.2lf %.2lf\n", (double)rel_wind(0)), (double)rel_wind(1), (double)rel_wind(2));
+
 	windvane_s windvane{};
 	windvane.timestamp = hrt_absolute_time();
 	_windvane_pub.publish(windvane);
@@ -192,44 +200,90 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 }
 void WINDVANE_ESTIMATOR::log_on_sdcard()
 {
+	tm tt = {};
+
+	if (!get_log_time(&tt, 28800)) {
+		return;
+	}
+
+	char time_now_str[16] = "";
+	strftime(time_now_str, sizeof(time_now_str), "%m%d_%H%M%S", &tt);
+	PX4_INFO("time now: %s\n", time_now_str);
+
 	if (_fd == -1) {
-		_fd = ::open(filename, O_CREAT | O_WRONLY, PX4_O_MODE_666);
+		char log_file_name_str[40] = "";
+		snprintf(log_file_name_str, sizeof(log_file_name_str), PX4_STORAGEDIR"/%s.csv", time_now_str);
+		PX4_INFO("log file name: %s\n", log_file_name_str);
+
+		_fd = ::open(log_file_name_str, O_CREAT | O_WRONLY, PX4_O_MODE_666);
 		if (_fd == -1) {
 			PX4_INFO("open error");
 			return;
 		}
 	}
 
-	PX4_INFO("%llu %.2f %.2f %.2f %.2f\n", windvane_sensor.timestamp,
-		(double)windvane_sensor.speed_hor, (double)windvane_sensor.angle_hor,
-		(double)windvane_sensor.speed_ver, (double)windvane_sensor.angle_ver);
 	const matrix::Eulerf euler(matrix::Quatf(attitude.q));
 	const float roll(euler.phi());
 	const float pitch(euler.theta());
 	const float yaw(euler.psi());
 
 	char *file = nullptr;
-	if (asprintf(&file, "%llu,"
+	if (asprintf(&file, "%s,"
 			    "%.2f,%.2f,%.2f,%.2f," //raw
 			    "%.2f,%.2f,%.2f," // attitude
 			    "%.2f,%.2f,%.2f," // ground_speed
 			    "%.7f,%.7f,%.2f," // Latitude Longitude Alt
 			    "%.2f,%.2f,%.2f," // Vax, Vay, Vax
 			    "%.2f,%.2f\n",    // Vwxy,0wxy
-		windvane_sensor.timestamp,
+		time_now_str,
 		(double)windvane_sensor.speed_hor, (double)windvane_sensor.angle_hor,
 		(double)windvane_sensor.speed_ver, (double)windvane_sensor.angle_ver,
 		(double)math::degrees(roll), (double)math::degrees(pitch), (double)math::degrees(yaw),
 		(double)local_pos.vx, (double)local_pos.vy, (double)local_pos.vz,
 		global_pos.lat, global_pos.lon, (double)global_pos.alt,
-		0,0,0,
-		0,0) < 0) {
+		0.00, 0.00, 0.00,
+		0.00, 0.00) < 0) {
 		return;
 	}
 
 	::write(_fd, file, strlen(file));
 	fsync(_fd);
 	free(file);
+}
+
+bool WINDVANE_ESTIMATOR::get_log_time(struct tm *tt, int utc_offset_sec)
+{
+	uORB::Subscription vehicle_gps_position_sub{ORB_ID(vehicle_gps_position)};
+
+	time_t utc_time_sec;
+	bool use_clock_time = true;
+
+	/* Get the latest GPS publication */
+	vehicle_gps_position_s gps_pos;
+
+	if (vehicle_gps_position_sub.copy(&gps_pos)) {
+		utc_time_sec = gps_pos.time_utc_usec / 1e6;
+
+		if (gps_pos.fix_type >= 2 && utc_time_sec >= GPS_EPOCH_SECS) {
+			use_clock_time = false;
+		}
+	}
+
+	if (use_clock_time) {
+		/* take clock time if there's no fix (yet) */
+		struct timespec ts = {};
+		px4_clock_gettime(CLOCK_REALTIME, &ts);
+		utc_time_sec = ts.tv_sec + (ts.tv_nsec / 1e9);
+
+		if (utc_time_sec < GPS_EPOCH_SECS) {
+			return false;
+		}
+	}
+
+	/* apply utc offset */
+	utc_time_sec += utc_offset_sec;
+
+	return gmtime_r(&utc_time_sec, tt) != nullptr;
 }
 
 int WINDVANE_ESTIMATOR::print_usage(const char *reason)

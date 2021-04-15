@@ -44,6 +44,7 @@
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_global_position.h>
+#include <uORB/topics/vehicle_gps_position.h>
 
 extern "C" __EXPORT int windvane_estimator_main(int argc, char *argv[]);
 
@@ -73,11 +74,10 @@ public:
 	int print_status() override;
 
 private:
-
+	bool get_log_time(struct tm *tt, int utc_offset_sec);
 	void calculate_and_publish();
 	void log_on_sdcard();
 
-	const char *filename = PX4_STORAGEDIR"/test.txt";
 	int _fd = -1;
 
 	windvane_sensor_s windvane_sensor{};

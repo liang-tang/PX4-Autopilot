@@ -80,6 +80,7 @@ private:
 
 	int _fd = -1;
 
+	windvane_s windvane{};
 	windvane_sensor_s windvane_sensor{};
 	vehicle_attitude_s attitude{};
 	vehicle_local_position_s local_pos{};

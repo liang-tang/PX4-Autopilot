@@ -143,18 +143,7 @@ void WINDVANE_ESTIMATOR::run()
 	fds[0].fd = windvane_sensor_sub;
 	fds[0].events = POLLIN;
 
-	windvane_sensor_s windvane_sensor{};
-
-        const char *filename = PX4_STORAGEDIR"/test.txt";
-
-        int _fd = ::open(filename, O_CREAT | O_WRONLY, PX4_O_MODE_666);
-
-        if (_fd == -1) {
-                PX4_INFO("open error");
-        }
-
 	while (!should_exit()) {
-
 		// wait for up to 1000ms for data
 		int pret = px4_poll(fds, (sizeof(fds) / sizeof(fds[0])), 1000);
 
@@ -169,46 +158,64 @@ void WINDVANE_ESTIMATOR::run()
 
 		} else if (fds[0].revents & POLLIN) {
 			orb_copy(ORB_ID(windvane_sensor), windvane_sensor_sub, &windvane_sensor);
-			PX4_INFO("%llu %.2f %.2f %.2f %.2f\n", windvane_sensor.timestamp,
-				(double)windvane_sensor.speed_hor, (double)windvane_sensor.angle_hor,
-				(double)windvane_sensor.speed_ver, (double)windvane_sensor.angle_ver);
-			char *file = nullptr;
-			if (asprintf(&file, "%.2f,%.2f,%.2f,%.2f\n",
-				(double)windvane_sensor.speed_hor,
-				(double)windvane_sensor.angle_hor,
-				(double)windvane_sensor.speed_ver,
-				(double)windvane_sensor.angle_ver) < 0) {
-				continue;
-			}
-			::write(_fd, file, strlen(file));
-			fsync(_fd);
-			free(file);
+			calculate_and_publish();
 		}
+	}
+	orb_unsubscribe(windvane_sensor_sub);
+}
 
-		if (_att_sub.updated()) {
-			_att_sub.copy(&attitude);
-			// const matrix::Eulerf euler(matrix::Quatf(attitude.q));
-			// const float roll(euler.phi());
-			// const float pitch(euler.theta());
-			// const float yaw(euler.psi());
-
-			// PX4_INFO("roll pitch yaw %.2f %.2f %.2f\n", (double)roll, (double)pitch, (double)yaw);
-		}
-
-		if (_local_pos_sub.updated()) {
-			_local_pos_sub.copy(&local_pos);
-		}
-
-		if (_global_pos_sub.updated()) {
-			_global_pos_sub.copy(&global_pos);
-		}
-
-		windvane_s windvane{};
-		windvane.timestamp = hrt_absolute_time();
-		_windvane_pub.publish(windvane);
+void WINDVANE_ESTIMATOR::calculate_and_publish()
+{
+	if (_att_sub.updated()) {
+		_att_sub.copy(&attitude);
 	}
 
-	orb_unsubscribe(windvane_sensor_sub);
+	if (_local_pos_sub.updated()) {
+		_local_pos_sub.copy(&local_pos);
+	}
+
+	if (_global_pos_sub.updated()) {
+		_global_pos_sub.copy(&global_pos);
+	}
+
+	// const matrix::Eulerf euler(matrix::Quatf(attitude.q));
+	// const float roll(euler.phi());
+	// const float pitch(euler.theta());
+	// const float yaw(euler.psi());
+
+	// PX4_INFO("roll pitch yaw %.2f %.2f %.2f\n", (double)roll, (double)pitch, (double)yaw);
+
+	windvane_s windvane{};
+	windvane.timestamp = hrt_absolute_time();
+	_windvane_pub.publish(windvane);
+
+	log_on_sdcard();
+}
+void WINDVANE_ESTIMATOR::log_on_sdcard()
+{
+	if (_fd == -1) {
+		_fd = ::open(filename, O_CREAT | O_WRONLY, PX4_O_MODE_666);
+		if (_fd == -1) {
+			PX4_INFO("open error");
+			return;
+		}
+	}
+
+	PX4_INFO("%llu %.2f %.2f %.2f %.2f\n", windvane_sensor.timestamp,
+		(double)windvane_sensor.speed_hor, (double)windvane_sensor.angle_hor,
+		(double)windvane_sensor.speed_ver, (double)windvane_sensor.angle_ver);
+	char *file = nullptr;
+	if (asprintf(&file, "%.2f,%.2f,%.2f,%.2f\n",
+		(double)windvane_sensor.speed_hor,
+		(double)windvane_sensor.angle_hor,
+		(double)windvane_sensor.speed_ver,
+		(double)windvane_sensor.angle_ver) < 0) {
+		return;
+	}
+
+	::write(_fd, file, strlen(file));
+	fsync(_fd);
+	free(file);
 }
 
 int WINDVANE_ESTIMATOR::print_usage(const char *reason)

@@ -73,6 +73,14 @@ public:
 	int print_status() override;
 
 private:
+
+	void calculate_and_publish();
+	void log_on_sdcard();
+
+	const char *filename = PX4_STORAGEDIR"/test.txt";
+	int _fd = -1;
+
+	windvane_sensor_s windvane_sensor{};
 	vehicle_attitude_s attitude{};
 	vehicle_local_position_s local_pos{};
 	vehicle_global_position_s global_pos{};

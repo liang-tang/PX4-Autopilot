@@ -186,11 +186,36 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 		_global_pos_sub.copy(&global_pos);
 	}
 
-	// matrix::Vector3f rel_wind(0, 0, 0);
-	// matrix::Dcmf R_body_to_earth(matrix::Quatf(attitude.q));
-	// rel_wind = R_body_to_earth.transpose() * rel_wind;
+	// wind speed (body frame)
+	matrix::Vector3f Vba(0, 0, 0);
+	Vba(0) = windvane_sensor.speed_hor * cosf(math::radians(windvane_sensor.angle_hor + 180));
+	Vba(1) = windvane_sensor.speed_hor * sinf(math::radians(windvane_sensor.angle_hor + 180));
+	Vba(2) = windvane_sensor.speed_ver * cosf(math::radians(windvane_sensor.angle_ver + 180));
 
-	// PX4_INFO("222: %.2lf %.2lf %.2lf\n", (double)rel_wind(0)), (double)rel_wind(1), (double)rel_wind(2));
+	// wind speed (world frame)
+	matrix::Vector3f Vga(0, 0, 0);
+	matrix::Dcmf R_body_to_earth(matrix::Quatf(attitude.q));
+	Vga = R_body_to_earth.transpose() * Vba;
+
+	// ground speed (world frame)
+	matrix::Vector3f Vgg(local_pos.vx, local_pos.vy, local_pos.vz);
+
+	// real wind speed (world frame)
+	matrix::Vector3f Vgw = Vgg - Vga;
+
+	// horizontal wind speed
+	float Vgwxy_len = sqrtf(Vgw(0) * Vgw(0) + Vgw(1) * Vgw(1));
+
+	float Owxy = 0;
+
+	matrix::Vector2f Vgwxy(Vgw(0), Vgw(1));
+	matrix::Vector2f n(1, 0);
+
+	if (Vgw(1) > 0) {
+		Owxy = math::degrees(acosf((Vgwxy * n) / (Vgwxy_len * n.length())));
+	} else if (Vgw(1) < 0) {
+		Owxy = math::degrees(acosf((Vgwxy * n) / (Vgwxy_len * n.length()))) + 180;
+	}
 
 	const matrix::Eulerf euler(matrix::Quatf(attitude.q));
 
@@ -210,17 +235,18 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 	windvane.lon = global_pos.lon;
 	windvane.alt = global_pos.alt;
 
-	windvane.wind_speed_calculated[0] = 0.0f;
-	windvane.wind_speed_calculated[1] = 0.0f;
-	windvane.wind_speed_calculated[2] = 0.0f;
+	windvane.wind_speed_calculated[0] = Vgw(0);
+	windvane.wind_speed_calculated[1] = Vgw(1);
+	windvane.wind_speed_calculated[2] = Vgw(2);
 
-	windvane.wind_speed_hor_calculated = 0.0f;
-	windvane.wind_angle_hor_calculated = 0.0f;
+	windvane.wind_speed_hor_calculated = Vgwxy_len;
+	windvane.wind_angle_hor_calculated = Owxy;
 
 	_windvane_pub.publish(windvane);
 
 	log_on_sdcard();
 }
+
 void WINDVANE_ESTIMATOR::log_on_sdcard()
 {
 	tm tt = {};
@@ -260,7 +286,7 @@ void WINDVANE_ESTIMATOR::log_on_sdcard()
 			    "%.2f,%.2f,%.2f," // attitude
 			    "%.2f,%.2f,%.2f," // ground_speed
 			    "%.7f,%.7f,%.2f," // Latitude Longitude Alt
-			    "%.2f,%.2f,%.2f," // Vax, Vay, Vax
+			    "%.2f,%.2f,%.2f," // Vax, Vay, Vaz
 			    "%.2f,%.2f\n",    // Vwxy,0wxy
 		time_now_str,
 		(double)windvane.speed_hor, (double)windvane.angle_hor,

@@ -188,9 +188,9 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 
 	// wind speed (body frame)
 	matrix::Vector3f Vba(0, 0, 0);
-	Vba(0) = windvane_sensor.speed_hor * cosf(math::radians(windvane_sensor.angle_hor + 180));
-	Vba(1) = windvane_sensor.speed_hor * sinf(math::radians(windvane_sensor.angle_hor + 180));
-	Vba(2) = windvane_sensor.speed_ver * cosf(math::radians(windvane_sensor.angle_ver + 180));
+	Vba(0) = windvane_sensor.speed_horiz * cosf(math::radians(windvane_sensor.angle_horiz + 180));
+	Vba(1) = windvane_sensor.speed_horiz * sinf(math::radians(windvane_sensor.angle_horiz + 180));
+	Vba(2) = windvane_sensor.speed_vert * cosf(math::radians(windvane_sensor.angle_vert + 180));
 
 	// wind speed (world frame)
 	matrix::Vector3f Vga(0, 0, 0);
@@ -220,10 +220,10 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 	const matrix::Eulerf euler(matrix::Quatf(attitude.q));
 
 	windvane.timestamp = hrt_absolute_time();
-	windvane.speed_hor = windvane_sensor.speed_hor;
-	windvane.angle_hor = windvane_sensor.angle_hor;
-	windvane.speed_ver = windvane_sensor.speed_ver;
-	windvane.angle_ver = windvane_sensor.angle_ver;
+	windvane.speed_horiz_sensor = windvane_sensor.speed_horiz;
+	windvane.angle_horiz_sensor = windvane_sensor.angle_horiz;
+	windvane.speed_vert_sensor = windvane_sensor.speed_vert;
+	windvane.angle_vert_sensor = windvane_sensor.angle_vert;
 	windvane.attitude[0] = math::degrees(euler.phi());
 	windvane.attitude[1] = math::degrees(euler.theta());
 	windvane.attitude[2] = math::degrees(euler.psi());
@@ -235,12 +235,12 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 	windvane.lon = global_pos.lon;
 	windvane.alt = global_pos.alt;
 
-	windvane.wind_speed_calculated[0] = Vgw(0);
-	windvane.wind_speed_calculated[1] = Vgw(1);
-	windvane.wind_speed_calculated[2] = Vgw(2);
+	windvane.wind_speed_3d[0] = Vgw(0);
+	windvane.wind_speed_3d[1] = Vgw(1);
+	windvane.wind_speed_3d[2] = Vgw(2);
 
-	windvane.wind_speed_hor_calculated = Vgwxy_len;
-	windvane.wind_angle_hor_calculated = Owxy;
+	windvane.wind_speed_horiz = Vgwxy_len;
+	windvane.wind_angle_horiz = Owxy;
 
 	_windvane_pub.publish(windvane);
 
@@ -279,6 +279,9 @@ void WINDVANE_ESTIMATOR::log_on_sdcard()
 			PX4_INFO("open error");
 			return;
 		}
+		//const char* head = "Time,Lat,Lng,Alt,Alt_ref,Roll,Pitch,Yaw,Time\n";
+
+
 	}
 
 	char *file = nullptr;
@@ -290,16 +293,16 @@ void WINDVANE_ESTIMATOR::log_on_sdcard()
 			    "%.2f,%.2f,%.2f," // Vax, Vay, Vaz
 			    "%.2f,%.2f\n",    // Vwxy,0wxy
 		&time_now_str[11], utc_time_ms,
-		(double)windvane.speed_hor, (double)windvane.angle_hor,
-		(double)windvane.speed_ver, (double)windvane.angle_ver,
+		(double)windvane.speed_horiz_sensor, (double)windvane.angle_horiz_sensor,
+		(double)windvane.speed_vert_sensor, (double)windvane.angle_vert_sensor,
 		(double)windvane.attitude[0], (double)windvane.attitude[1], (double)windvane.attitude[2],
 		(double)windvane.ground_speed[0], (double)windvane.ground_speed[1], (double)windvane.ground_speed[2],
 		windvane.lat, windvane.lon, (double)windvane.alt,
-		(double)windvane.wind_speed_calculated[0],
-		(double)windvane.wind_speed_calculated[1],
-		(double)windvane.wind_speed_calculated[2],
-		(double)windvane.wind_speed_hor_calculated,
-		(double)windvane.wind_angle_hor_calculated) < 0) {
+		(double)windvane.wind_speed_3d[0],
+		(double)windvane.wind_speed_3d[1],
+		(double)windvane.wind_speed_3d[2],
+		(double)windvane.wind_speed_horiz,
+		(double)windvane.wind_angle_horiz) < 0) {
 		return;
 	}
 

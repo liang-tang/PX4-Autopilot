@@ -238,18 +238,18 @@ FT205EV::Run()
 	}
 
 	if (updated[0] && updated[1]) {
-		float speed_hor = windvane_nmea[0]->get_wind_speed();
-		float angle_hor = windvane_nmea[0]->get_wind_dir();
+		float speed_horiz = windvane_nmea[0]->get_wind_speed();
+		float angle_horiz = windvane_nmea[0]->get_wind_dir();
 
-		float speed_ver = windvane_nmea[1]->get_wind_speed();
-		float angle_ver = windvane_nmea[1]->get_wind_dir();
+		float speed_vert = windvane_nmea[1]->get_wind_speed();
+		float angle_vert = windvane_nmea[1]->get_wind_dir();
 
 		windvane_sensor_s windvane_sensor{};
 		windvane_sensor.timestamp = hrt_absolute_time();
-		windvane_sensor.speed_hor = speed_hor;
-		windvane_sensor.angle_hor = angle_hor;
-		windvane_sensor.speed_ver = speed_ver;
-		windvane_sensor.angle_ver = angle_ver;
+		windvane_sensor.speed_horiz = speed_horiz;
+		windvane_sensor.angle_horiz = angle_horiz;
+		windvane_sensor.speed_vert = speed_vert;
+		windvane_sensor.angle_vert = angle_vert;
 
 		_windvane_sensor_pub.publish(windvane_sensor);
 

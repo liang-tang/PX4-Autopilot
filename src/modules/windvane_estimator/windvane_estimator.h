@@ -74,7 +74,6 @@ public:
 	int print_status() override;
 
 private:
-	bool get_log_time(struct tm *tt, int utc_offset_sec);
 	void calculate_and_publish();
 	void log_on_sdcard();
 

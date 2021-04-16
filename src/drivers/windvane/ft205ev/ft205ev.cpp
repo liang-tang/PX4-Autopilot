@@ -203,7 +203,7 @@ FT205EV::start()
 	windvane_nmea[0] = new AP_WindVane_NMEA();
 	windvane_nmea[1] = new AP_WindVane_NMEA();
 	// schedule a cycle to start things (the sensor sends at 10Hz, but we run a bit faster to avoid missing data)
-	ScheduleOnInterval(70_ms);
+	ScheduleOnInterval(10_ms);
 }
 
 void

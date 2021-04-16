@@ -249,29 +249,30 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 
 void WINDVANE_ESTIMATOR::log_on_sdcard()
 {
-	tm tt = {};
+	/* take clock time if there's no fix (yet) */
+	struct timespec ts = {};
+	px4_clock_gettime(CLOCK_REALTIME, &ts);
+	time_t utc_time_sec = ts.tv_sec + (ts.tv_nsec / 1e9);
+	time_t utc_time_ms = ts.tv_nsec / 1e6;
 
-	if (!get_log_time(&tt, 28800)) {
+	if (utc_time_sec < GPS_EPOCH_SECS) {
+		return;
+	}
+
+	/* apply utc offset */
+	utc_time_sec += 28800;
+
+	tm tt = {};
+	if (gmtime_r(&utc_time_sec, &tt) == nullptr) {
 		return;
 	}
 
 	char time_now_str[32] = "";
 	strftime(time_now_str, sizeof(time_now_str), "%Y_%m_%d-%H_%M_%S", &tt);
-	PX4_INFO("time now: %s\n", time_now_str);
 
 	if (_fd == -1) {
-		// char log_dir[40] = "";
-		// strftime(log_dir, sizeof(log_dir), PX4_STORAGEDIR"/""%Y-%m-%d", &tt);
-		// int mkdir_ret = mkdir(log_dir, S_IRWXU | S_IRWXG | S_IRWXO);
-
-		// if (mkdir_ret != OK && errno != EEXIST) {
-		// 	PX4_ERR("failed creating new dir: %s", log_dir);
-		// 	return ;
-		// }
-
 		char log_file_name_str[64] = "";
 		snprintf(log_file_name_str, sizeof(log_file_name_str), PX4_STORAGEDIR"/%s.csv", time_now_str);
-		PX4_INFO("log file name: %s\n", log_file_name_str);
 
 		_fd = ::open(log_file_name_str, O_CREAT | O_WRONLY, PX4_O_MODE_666);
 		if (_fd == -1) {
@@ -281,14 +282,14 @@ void WINDVANE_ESTIMATOR::log_on_sdcard()
 	}
 
 	char *file = nullptr;
-	if (asprintf(&file, "%s,"
+	if (asprintf(&file, "%s:%03u,"
 			    "%.2f,%.2f,%.2f,%.2f," //raw
 			    "%.2f,%.2f,%.2f," // attitude
 			    "%.2f,%.2f,%.2f," // ground_speed
 			    "%.7f,%.7f,%.2f," // Latitude Longitude Alt
 			    "%.2f,%.2f,%.2f," // Vax, Vay, Vaz
 			    "%.2f,%.2f\n",    // Vwxy,0wxy
-		time_now_str,
+		&time_now_str[11], utc_time_ms,
 		(double)windvane.speed_hor, (double)windvane.angle_hor,
 		(double)windvane.speed_ver, (double)windvane.angle_ver,
 		(double)windvane.attitude[0], (double)windvane.attitude[1], (double)windvane.attitude[2],
@@ -305,41 +306,6 @@ void WINDVANE_ESTIMATOR::log_on_sdcard()
 	::write(_fd, file, strlen(file));
 	fsync(_fd);
 	free(file);
-}
-
-bool WINDVANE_ESTIMATOR::get_log_time(struct tm *tt, int utc_offset_sec)
-{
-	uORB::Subscription vehicle_gps_position_sub{ORB_ID(vehicle_gps_position)};
-
-	time_t utc_time_sec;
-	bool use_clock_time = true;
-
-	/* Get the latest GPS publication */
-	vehicle_gps_position_s gps_pos;
-
-	if (vehicle_gps_position_sub.copy(&gps_pos)) {
-		utc_time_sec = gps_pos.time_utc_usec / 1e6;
-
-		if (gps_pos.fix_type >= 2 && utc_time_sec >= GPS_EPOCH_SECS) {
-			use_clock_time = false;
-		}
-	}
-
-	if (use_clock_time) {
-		/* take clock time if there's no fix (yet) */
-		struct timespec ts = {};
-		px4_clock_gettime(CLOCK_REALTIME, &ts);
-		utc_time_sec = ts.tv_sec + (ts.tv_nsec / 1e9);
-
-		if (utc_time_sec < GPS_EPOCH_SECS) {
-			return false;
-		}
-	}
-
-	/* apply utc offset */
-	utc_time_sec += utc_offset_sec;
-
-	return gmtime_r(&utc_time_sec, tt) != nullptr;
 }
 
 int WINDVANE_ESTIMATOR::print_usage(const char *reason)

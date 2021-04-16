@@ -117,14 +117,17 @@ void WINDVANE_ESTIMATOR::run()
 
 void WINDVANE_ESTIMATOR::calculate_and_publish()
 {
+	// copy attitude
 	if (_att_sub.updated()) {
 		_att_sub.copy(&attitude);
 	}
 
+	// copy local position
 	if (_local_pos_sub.updated()) {
 		_local_pos_sub.copy(&local_pos);
 	}
 
+	// copy global position
 	if (_global_pos_sub.updated()) {
 		_global_pos_sub.copy(&global_pos);
 	}
@@ -149,11 +152,14 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 	// horizontal wind speed
 	float Vgwxy_len = sqrtf(Vgw(0) * Vgw(0) + Vgw(1) * Vgw(1));
 
+	// horizontal wind angle
 	float Owxy = 0;
 
+	// horizontal wind vector
 	Vector2f Vgwxy(Vgw(0), Vgw(1));
 	Vector2f n(1, 0);
 
+	// calculate horizontal wind angle
 	if (Vgw(1) > 0) {
 		Owxy = degrees(acosf((Vgwxy * n) / (Vgwxy_len * n.length())));
 	} else if (Vgw(1) < 0) {
@@ -188,6 +194,7 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 	windvane.wind_speed_horiz = Vgwxy_len;
 	windvane.wind_angle_horiz = Owxy;
 
+	// publish to mavlink interface
 	_windvane_pub.publish(windvane);
 
 	log_on_sdcard();
@@ -195,7 +202,6 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 
 void WINDVANE_ESTIMATOR::log_on_sdcard()
 {
-	/* take clock time if there's no fix (yet) */
 	struct timespec ts = {};
 	px4_clock_gettime(CLOCK_REALTIME, &ts);
 	time_t utc_time_sec = ts.tv_sec + (ts.tv_nsec / 1e9);

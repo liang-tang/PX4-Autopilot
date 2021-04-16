@@ -44,6 +44,9 @@
 #include <stdlib.h>
 #include <time.h>
 
+using namespace math;
+using namespace matrix;
+
 #define GPS_EPOCH_SECS ((time_t)1234567890ULL)
 
 int WINDVANE_ESTIMATOR::custom_command(int argc, char *argv[])
@@ -127,37 +130,37 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 	}
 
 	// wind speed (body frame)
-	matrix::Vector3f Vba(0, 0, 0);
-	Vba(0) = windvane_sensor.speed_horiz * cosf(math::radians(windvane_sensor.angle_horiz + 180));
-	Vba(1) = windvane_sensor.speed_horiz * sinf(math::radians(windvane_sensor.angle_horiz + 180));
-	Vba(2) = windvane_sensor.speed_vert * cosf(math::radians(windvane_sensor.angle_vert + 180));
+	Vector3f Vba(0, 0, 0);
+	Vba(0) = windvane_sensor.speed_horiz * cosf(radians(windvane_sensor.angle_horiz + 180));
+	Vba(1) = windvane_sensor.speed_horiz * sinf(radians(windvane_sensor.angle_horiz + 180));
+	Vba(2) = windvane_sensor.speed_vert * cosf(radians(windvane_sensor.angle_vert + 180));
 
 	// wind speed (world frame)
-	matrix::Vector3f Vga(0, 0, 0);
-	matrix::Dcmf R_body_to_earth(matrix::Quatf(attitude.q));
+	Vector3f Vga(0, 0, 0);
+	Dcmf R_body_to_earth(Quatf(attitude.q));
 	Vga = R_body_to_earth.transpose() * Vba;
 
 	// ground speed (world frame)
-	matrix::Vector3f Vgg(local_pos.vx, local_pos.vy, local_pos.vz);
+	Vector3f Vgg(local_pos.vx, local_pos.vy, local_pos.vz);
 
 	// real wind speed (world frame)
-	matrix::Vector3f Vgw = Vgg - Vga;
+	Vector3f Vgw = Vgg - Vga;
 
 	// horizontal wind speed
 	float Vgwxy_len = sqrtf(Vgw(0) * Vgw(0) + Vgw(1) * Vgw(1));
 
 	float Owxy = 0;
 
-	matrix::Vector2f Vgwxy(Vgw(0), Vgw(1));
-	matrix::Vector2f n(1, 0);
+	Vector2f Vgwxy(Vgw(0), Vgw(1));
+	Vector2f n(1, 0);
 
 	if (Vgw(1) > 0) {
-		Owxy = math::degrees(acosf((Vgwxy * n) / (Vgwxy_len * n.length())));
+		Owxy = degrees(acosf((Vgwxy * n) / (Vgwxy_len * n.length())));
 	} else if (Vgw(1) < 0) {
-		Owxy = math::degrees(acosf((Vgwxy * n) / (Vgwxy_len * n.length()))) + 180;
+		Owxy = degrees(acosf((Vgwxy * n) / (Vgwxy_len * n.length()))) + 180;
 	}
 
-	const matrix::Eulerf euler(matrix::Quatf(attitude.q));
+	const Eulerf euler(Quatf(attitude.q));
 
 	windvane.timestamp = hrt_absolute_time();
 
@@ -169,9 +172,9 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 	windvane.ground_speed[1] = local_pos.vy;
 	windvane.ground_speed[2] = local_pos.vz;
 
-	windvane.attitude[0] = math::degrees(euler.phi());
-	windvane.attitude[1] = math::degrees(euler.theta());
-	windvane.attitude[2] = math::degrees(euler.psi());
+	windvane.attitude[0] = degrees(euler.phi());
+	windvane.attitude[1] = degrees(euler.theta());
+	windvane.attitude[2] = degrees(wrap_2pi(euler.psi()));
 
 	windvane.speed_horiz_sensor = windvane_sensor.speed_horiz;
 	windvane.angle_horiz_sensor = windvane_sensor.angle_horiz;

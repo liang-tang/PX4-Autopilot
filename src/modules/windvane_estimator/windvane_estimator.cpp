@@ -220,20 +220,23 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 	const matrix::Eulerf euler(matrix::Quatf(attitude.q));
 
 	windvane.timestamp = hrt_absolute_time();
-	windvane.speed_horiz_sensor = windvane_sensor.speed_horiz;
-	windvane.angle_horiz_sensor = windvane_sensor.angle_horiz;
-	windvane.speed_vert_sensor = windvane_sensor.speed_vert;
-	windvane.angle_vert_sensor = windvane_sensor.angle_vert;
-	windvane.attitude[0] = math::degrees(euler.phi());
-	windvane.attitude[1] = math::degrees(euler.theta());
-	windvane.attitude[2] = math::degrees(euler.psi());
-	windvane.ground_speed[0] = local_pos.vx;
-	windvane.ground_speed[1] = local_pos.vy;
-	windvane.ground_speed[2] = local_pos.vz;
 
 	windvane.lat = global_pos.lat;
 	windvane.lon = global_pos.lon;
 	windvane.alt = global_pos.alt;
+
+	windvane.ground_speed[0] = local_pos.vx;
+	windvane.ground_speed[1] = local_pos.vy;
+	windvane.ground_speed[2] = local_pos.vz;
+
+	windvane.attitude[0] = math::degrees(euler.phi());
+	windvane.attitude[1] = math::degrees(euler.theta());
+	windvane.attitude[2] = math::degrees(euler.psi());
+
+	windvane.speed_horiz_sensor = windvane_sensor.speed_horiz;
+	windvane.angle_horiz_sensor = windvane_sensor.angle_horiz;
+	windvane.speed_vert_sensor = windvane_sensor.speed_vert;
+	windvane.angle_vert_sensor = windvane_sensor.angle_vert;
 
 	windvane.wind_speed_3d[0] = Vgw(0);
 	windvane.wind_speed_3d[1] = Vgw(1);
@@ -279,25 +282,33 @@ void WINDVANE_ESTIMATOR::log_on_sdcard()
 			PX4_INFO("open error");
 			return;
 		}
-		//const char* head = "Time,Lat,Lng,Alt,Alt_ref,Roll,Pitch,Yaw,Time\n";
-
-
+		const char* head =
+				"Time,"
+				"Lat,Lon,Alt,"
+				"ground_speed.x,ground_speed.y,ground_speed.z,"
+				"Roll,Pitch,Yaw,"
+				"speed_horiz_sensor,angle_horiz_sensor,"
+				"speed_vert_sensor,angle_vert_sensor,"
+				"wind_speed_3d.x,wind_speed_3d.y, wind_speed_3d.z,"
+				"wind_speed_horiz,wind_angle_horiz\n";
+		::write(_fd, head, strlen(head));
+		fsync(_fd);
 	}
 
 	char *file = nullptr;
 	if (asprintf(&file, "%s:%03u,"
-			    "%.2f,%.2f,%.2f,%.2f," //raw
-			    "%.2f,%.2f,%.2f," // attitude
+			    "%.7f,%.7f,%.2f," // latitude longitude alt
 			    "%.2f,%.2f,%.2f," // ground_speed
-			    "%.7f,%.7f,%.2f," // Latitude Longitude Alt
-			    "%.2f,%.2f,%.2f," // Vax, Vay, Vaz
-			    "%.2f,%.2f\n",    // Vwxy,0wxy
+			    "%.2f,%.2f,%.2f," // attitude
+			    "%.2f,%.2f,%.2f,%.2f," // raw sensor
+			    "%.2f,%.2f,%.2f," // wind_speed_3d
+			    "%.2f,%.2f\n",    // wind_speed_horiz, wind_angle_horiz
 		&time_now_str[11], utc_time_ms,
+		windvane.lat, windvane.lon, (double)windvane.alt,
+		(double)windvane.ground_speed[0], (double)windvane.ground_speed[1], (double)windvane.ground_speed[2],
+		(double)windvane.attitude[0], (double)windvane.attitude[1], (double)windvane.attitude[2],
 		(double)windvane.speed_horiz_sensor, (double)windvane.angle_horiz_sensor,
 		(double)windvane.speed_vert_sensor, (double)windvane.angle_vert_sensor,
-		(double)windvane.attitude[0], (double)windvane.attitude[1], (double)windvane.attitude[2],
-		(double)windvane.ground_speed[0], (double)windvane.ground_speed[1], (double)windvane.ground_speed[2],
-		windvane.lat, windvane.lon, (double)windvane.alt,
 		(double)windvane.wind_speed_3d[0],
 		(double)windvane.wind_speed_3d[1],
 		(double)windvane.wind_speed_3d[2],

@@ -37,9 +37,6 @@
 #include <px4_platform_common/log.h>
 #include <px4_platform_common/posix.h>
 
-#include <uORB/topics/parameter_update.h>
-#include <uORB/topics/sensor_combined.h>
-
 #include <dirent.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -49,32 +46,10 @@
 
 #define GPS_EPOCH_SECS ((time_t)1234567890ULL)
 
-int WINDVANE_ESTIMATOR::print_status()
-{
-	PX4_INFO("Running");
-	// TODO: print additional runtime information about the state of the module
-
-	return 0;
-}
-
 int WINDVANE_ESTIMATOR::custom_command(int argc, char *argv[])
 {
-	/*
-	if (!is_running()) {
-		print_usage("not running");
-		return 1;
-	}
-
-	// additional custom commands can be handled like this:
-	if (!strcmp(argv[0], "do-something")) {
-		get_instance()->do_something();
-		return 0;
-	}
-	 */
-
 	return print_usage("unknown command");
 }
-
 
 int WINDVANE_ESTIMATOR::task_spawn(int argc, char *argv[])
 {
@@ -95,41 +70,7 @@ int WINDVANE_ESTIMATOR::task_spawn(int argc, char *argv[])
 
 WINDVANE_ESTIMATOR *WINDVANE_ESTIMATOR::instantiate(int argc, char *argv[])
 {
-	int example_param = 0;
-	bool example_flag = false;
-	bool error_flag = false;
-
-	int myoptind = 1;
-	int ch;
-	const char *myoptarg = nullptr;
-
-	// parse CLI arguments
-	while ((ch = px4_getopt(argc, argv, "p:f", &myoptind, &myoptarg)) != EOF) {
-		switch (ch) {
-		case 'p':
-			example_param = (int)strtol(myoptarg, nullptr, 10);
-			break;
-
-		case 'f':
-			example_flag = true;
-			break;
-
-		case '?':
-			error_flag = true;
-			break;
-
-		default:
-			PX4_WARN("unrecognized flag");
-			error_flag = true;
-			break;
-		}
-	}
-
-	if (error_flag) {
-		return nullptr;
-	}
-
-	WINDVANE_ESTIMATOR *instance = new WINDVANE_ESTIMATOR(example_param, example_flag);
+	WINDVANE_ESTIMATOR *instance = new WINDVANE_ESTIMATOR();
 
 	if (instance == nullptr) {
 		PX4_ERR("alloc failed");
@@ -138,8 +79,7 @@ WINDVANE_ESTIMATOR *WINDVANE_ESTIMATOR::instantiate(int argc, char *argv[])
 	return instance;
 }
 
-WINDVANE_ESTIMATOR::WINDVANE_ESTIMATOR(int example_param, bool example_flag)
-	: ModuleParams(nullptr)
+WINDVANE_ESTIMATOR::WINDVANE_ESTIMATOR()
 {
 }
 
@@ -328,26 +268,8 @@ int WINDVANE_ESTIMATOR::print_usage(const char *reason)
 		PX4_WARN("%s\n", reason);
 	}
 
-	PRINT_MODULE_DESCRIPTION(
-		R"DESCR_STR(
-### Description
-Section that describes the provided module functionality.
-
-This is a template for a module running as a task in the background with start/stop/status functionality.
-
-### Implementation
-Section describing the high-level implementation of this module.
-
-### Examples
-CLI usage example:
-$ module start -f -p 42
-
-)DESCR_STR");
-
 	PRINT_MODULE_USAGE_NAME("module", "template");
 	PRINT_MODULE_USAGE_COMMAND("start");
-	PRINT_MODULE_USAGE_PARAM_FLAG('f', "Optional example flag", true);
-	PRINT_MODULE_USAGE_PARAM_INT('p', 0, 0, 1000, "Optional example parameter", true);
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 
 	return 0;

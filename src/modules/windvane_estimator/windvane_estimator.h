@@ -34,10 +34,8 @@
 #pragma once
 
 #include <px4_platform_common/module.h>
-#include <px4_platform_common/module_params.h>
-#include <uORB/Subscription.hpp>
-#include <uORB/topics/parameter_update.h>
 
+#include <uORB/Subscription.hpp>
 #include <uORB/Publication.hpp>
 #include <uORB/topics/windvane.h>
 #include <uORB/topics/windvane_sensor.h>
@@ -48,10 +46,10 @@
 
 extern "C" __EXPORT int windvane_estimator_main(int argc, char *argv[]);
 
-class WINDVANE_ESTIMATOR : public ModuleBase<WINDVANE_ESTIMATOR>, public ModuleParams
+class WINDVANE_ESTIMATOR : public ModuleBase<WINDVANE_ESTIMATOR>
 {
 public:
-	WINDVANE_ESTIMATOR(int example_param, bool example_flag);
+	WINDVANE_ESTIMATOR();
 
 	virtual ~WINDVANE_ESTIMATOR() = default;
 
@@ -69,9 +67,6 @@ public:
 
 	/** @see ModuleBase::run() */
 	void run() override;
-
-	/** @see ModuleBase::print_status() */
-	int print_status() override;
 
 private:
 	void calculate_and_publish();
@@ -92,4 +87,3 @@ private:
 	uORB::Subscription _local_pos_sub{ORB_ID(vehicle_local_position)};
 	uORB::Subscription _global_pos_sub{ORB_ID(vehicle_global_position)};
 };
-

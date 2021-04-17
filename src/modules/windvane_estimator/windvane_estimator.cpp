@@ -132,19 +132,39 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 		_global_pos_sub.copy(&global_pos);
 	}
 
+	// attitude
+	Eulerf euler(Quatf(attitude.q));
+	// ground speed (world frame)
+	Vector3f Vgg(local_pos.vx, local_pos.vy, local_pos.vz);
+#if 1
+	euler.phi() = radians(0);
+	euler.theta() = radians(0);
+	euler.psi() = radians(45.0f);
+
+	windvane_sensor.speed_horiz = 2.0f*1.414f;
+	windvane_sensor.speed_vert = 2.0f*1.414f;
+	windvane_sensor.angle_horiz = 0;
+	windvane_sensor.angle_vert = 90;
+
+	Vgg(0) = 1;
+	Vgg(1) = 1;
+	Vgg(2) = 0;
+#endif
+
 	// wind speed (body frame)
 	Vector3f Vba(0, 0, 0);
-	Vba(0) = windvane_sensor.speed_horiz * cosf(radians(windvane_sensor.angle_horiz + 180));
-	Vba(1) = windvane_sensor.speed_horiz * sinf(radians(windvane_sensor.angle_horiz + 180));
-	Vba(2) = windvane_sensor.speed_vert * cosf(radians(windvane_sensor.angle_vert + 180));
+	Vba(0) = windvane_sensor.speed_horiz * cosf(radians(windvane_sensor.angle_horiz));
+	Vba(1) = windvane_sensor.speed_horiz * sinf(radians(windvane_sensor.angle_horiz));
+	Vba(2) = windvane_sensor.speed_vert * cosf(radians(windvane_sensor.angle_vert));
+
+	matrix::Dcmf matrix  = matrix::Dcmf{matrix::Eulerf{
+							euler.phi(),
+							euler.theta(),
+							euler.psi()}};
 
 	// wind speed (world frame)
 	Vector3f Vga(0, 0, 0);
-	Dcmf R_body_to_earth(Quatf(attitude.q));
-	Vga = R_body_to_earth.transpose() * Vba;
-
-	// ground speed (world frame)
-	Vector3f Vgg(local_pos.vx, local_pos.vy, local_pos.vz);
+	Vga = matrix * Vba;
 
 	// real wind speed (world frame)
 	Vector3f Vgw = Vgg - Vga;
@@ -163,10 +183,8 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 	if (Vgw(1) > 0) {
 		Owxy = degrees(acosf((Vgwxy * n) / (Vgwxy_len * n.length())));
 	} else if (Vgw(1) < 0) {
-		Owxy = degrees(acosf((Vgwxy * n) / (Vgwxy_len * n.length()))) + 180;
+		Owxy = 360 -degrees(acosf((Vgwxy * n) / (Vgwxy_len * n.length())));
 	}
-
-	const Eulerf euler(Quatf(attitude.q));
 
 	windvane.timestamp = hrt_absolute_time();
 
@@ -193,6 +211,10 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 
 	windvane.wind_speed_horiz = Vgwxy_len;
 	windvane.wind_angle_horiz = Owxy;
+
+	PX4_INFO("Vgw %.2f %.2f %.2f", (double)Vgw(0), (double)Vgw(1), (double)Vgw(2));
+	PX4_INFO("Vgwxy %.2f", (double)Vgwxy_len);
+	PX4_INFO("Owxy %.2f", (double)Owxy);
 
 	// publish to mavlink interface
 	_windvane_pub.publish(windvane);

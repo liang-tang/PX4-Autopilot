@@ -98,8 +98,8 @@ FT205EV::init_ports(int port)
 			return -1;
 		}
 
-		// baudrate 115200, 8 bits, no parity, 1 stop bit
-		unsigned speed = B115200;
+		// baudrate 9600, 8 bits, no parity, 1 stop bit
+		unsigned speed = B9600;
 		termios uart_config{};
 		int termios_state{};
 

@@ -135,7 +135,7 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 	}
 
 	// attitude
-	Eulerf euler(Quatf(attitude.q));
+	Eulerf euler = Quatf(attitude.q);
 	// ground speed (world frame)
 	Vector3f Vgg(local_pos.vx, local_pos.vy, local_pos.vz);
 #if TEST_CASE == 1
@@ -200,7 +200,7 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 	} else if (Vgw(1) > 0) {
 		Owxy = degrees(acosf((Vgwxy * n) / (Vgwxy_len * n.length())));
 	} else if (Vgw(1) < 0) {
-		Owxy = 360 -degrees(acosf((Vgwxy * n) / (Vgwxy_len * n.length())));
+		Owxy = 360 - degrees(acosf((Vgwxy * n) / (Vgwxy_len * n.length())));
 	}
 
 	windvane.timestamp = hrt_absolute_time();

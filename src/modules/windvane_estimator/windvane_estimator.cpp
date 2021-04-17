@@ -44,6 +44,8 @@
 #include <stdlib.h>
 #include <time.h>
 
+#define TEST_CASE 1
+
 using namespace math;
 using namespace matrix;
 
@@ -136,15 +138,28 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 	Eulerf euler(Quatf(attitude.q));
 	// ground speed (world frame)
 	Vector3f Vgg(local_pos.vx, local_pos.vy, local_pos.vz);
-#if 1
+#if TEST_CASE == 1
 	euler.phi() = radians(0);
 	euler.theta() = radians(0);
 	euler.psi() = radians(45.0f);
 
-	windvane_sensor.speed_horiz = 2.0f*1.414f;
-	windvane_sensor.speed_vert = 2.0f*1.414f;
+	windvane_sensor.speed_horiz = 2.0f*1.4142135623731f;
+	windvane_sensor.speed_vert = 2.0f*1.4142135623731f;
 	windvane_sensor.angle_horiz = 0;
 	windvane_sensor.angle_vert = 90;
+
+	Vgg(0) = 1;
+	Vgg(1) = 1;
+	Vgg(2) = 0;
+#elif TEST_CASE == 2
+	euler.phi() = radians(0);
+	euler.theta() = radians(0);
+	euler.psi() = radians(45.0f);
+
+	windvane_sensor.speed_horiz = 1.4142135623731f;
+	windvane_sensor.angle_horiz = 0;
+	windvane_sensor.speed_vert = 1;
+	windvane_sensor.angle_vert = 0;
 
 	Vgg(0) = 1;
 	Vgg(1) = 1;
@@ -180,7 +195,9 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 	Vector2f n(1, 0);
 
 	// calculate horizontal wind angle
-	if (Vgw(1) > 0) {
+	if (fabsf(Vgw(1)) < FLT_EPSILON) {
+		// do nothing
+	} else if (Vgw(1) > 0) {
 		Owxy = degrees(acosf((Vgwxy * n) / (Vgwxy_len * n.length())));
 	} else if (Vgw(1) < 0) {
 		Owxy = 360 -degrees(acosf((Vgwxy * n) / (Vgwxy_len * n.length())));

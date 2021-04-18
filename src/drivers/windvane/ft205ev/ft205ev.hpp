@@ -57,6 +57,7 @@
 
 #include "windvane_nmea.h"
 
+// default ports
 #define FT205EV_DEFAULT_PORT1 "/dev/ttyS2"
 #define FT205EV_DEFAULT_PORT2 "/dev/ttyS3"
 
@@ -65,32 +66,50 @@ using namespace time_literals;
 class FT205EV : public px4::ScheduledWorkItem
 {
 public:
+	// constructor
 	FT205EV(const char *port1, const char *port2);
+
+	// destructor
 	virtual ~FT205EV();
 
+	// This method initializes the general driver for a windvane sensor
 	int init();
 
+	// print some basic information about the driver
 	void print_info();
 
 private:
-
+	// init serial ports
 	int init_ports(int port);
+
+	// read data fom serial port
 	int collect(int port);
 
+	// Perform a reading cycle
 	void Run() override;
 
+	// Initialise the automatic measurement state machine and start it
 	void start();
+
+	// Stops the automatic measurement state machine
 	void stop();
 
+	// serial port name
 	char _ports[2][20] {};
 
+	// The file descriptor
 	int _fd[2]{-1, -1};
 
+	// parser
 	AP_WindVane_NMEA *windvane_nmea[2];
+
+	// data flag
 	bool updated[2];
 
+	// Publication
 	uORB::Publication<windvane_sensor_s> _windvane_sensor_pub{ORB_ID(windvane_sensor)};
 
+	// perf counter
 	perf_counter_t _comms_errors{perf_alloc(PC_COUNT, MODULE_NAME": com_err")};
 	perf_counter_t _sample_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": read")};
 };

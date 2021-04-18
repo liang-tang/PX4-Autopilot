@@ -107,24 +107,6 @@ int stop()
 int
 usage()
 {
-	PRINT_MODULE_DESCRIPTION(
-		R"DESCR_STR(
-### Description
-
-Serial bus driver for the Benewake TFmini LiDAR.
-
-Most boards are configured to enable/start the driver on a specified UART using the SENS_TFMINI_CFG parameter.
-
-Setup/usage information: https://docs.px4.io/master/en/sensor/tfmini.html
-
-### Examples
-
-Attempt to start driver on a specified serial device.
-$ tfmini start -d /dev/ttyS1
-Stop driver
-$ tfmini stop
-)DESCR_STR");
-
 	PRINT_MODULE_USAGE_NAME("ft205ev", "driver");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("start", "Start driver");
 	PRINT_MODULE_USAGE_PARAM_STRING('d', nullptr, nullptr, "Serial device1", false);
@@ -140,11 +122,14 @@ $ tfmini stop
 extern "C" __EXPORT int ft205ev_main(int argc, char *argv[])
 {
 	int ch = 0;
+	// tty port1
 	const char *device_path1 = FT205EV_DEFAULT_PORT1;
+	// tty port2
 	const char *device_path2 = FT205EV_DEFAULT_PORT2;
 	int myoptind = 1;
 	const char *myoptarg = nullptr;
 
+	// parse CLI arguments if have
 	while ((ch = px4_getopt(argc, argv, "e:e:", &myoptind, &myoptarg)) != EOF) {
 		switch (ch) {
 		case 'd':

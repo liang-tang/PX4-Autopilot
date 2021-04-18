@@ -56,6 +56,7 @@ FT205EV::~FT205EV()
 	// make sure we are truly inactive
 	stop();
 
+	// release parser
 	if (windvane_nmea[0] != nullptr) {
 		delete windvane_nmea[0] ;
 		windvane_nmea[0] = nullptr;
@@ -66,6 +67,20 @@ FT205EV::~FT205EV()
 		windvane_nmea[1] = nullptr;
 	}
 
+	// close fd
+	if (_fd[0] > 0) {
+		// close fd
+		::close(_fd[0]);
+		_fd[0] = -1;
+	}
+
+	if (_fd[0] > 0) {
+		// close fd
+		::close(_fd[1]);
+		_fd[1] = -1;
+	}
+
+	// release perf
 	perf_free(_sample_perf);
 	perf_free(_comms_errors);
 }
@@ -73,12 +88,15 @@ FT205EV::~FT205EV()
 int
 FT205EV::init()
 {
+	// init ports
 	int ret1 = init_ports(0);
 	int ret2 = init_ports(1);
 	if (ret1 == PX4_OK && ret2 == PX4_OK) {
+		// start the driver loop
 		start();
 	}
 
+	// double serial port need init successful
 	return ret1 & ret2;
 }
 
@@ -98,7 +116,7 @@ FT205EV::init_ports(int port)
 			return -1;
 		}
 
-		// baudrate 9600, 8 bits, no parity, 1 stop bit
+		// baudrate 9600
 		unsigned speed = B9600;
 		termios uart_config{};
 		int termios_state{};
@@ -172,6 +190,7 @@ FT205EV::collect(int port)
 		return 0;
 	}
 
+	// read and parse data
 	int ret = 0;
 	do {
 		// read from the sensor (uart buffer)
@@ -200,15 +219,18 @@ FT205EV::collect(int port)
 void
 FT205EV::start()
 {
+	// alloc parser
 	windvane_nmea[0] = new AP_WindVane_NMEA();
 	windvane_nmea[1] = new AP_WindVane_NMEA();
-	// schedule a cycle to start things (the sensor sends at 10Hz, but we run a bit faster to avoid missing data)
+
+	// schedule a cycle to start things
 	ScheduleOnInterval(10_ms);
 }
 
 void
 FT205EV::stop()
 {
+	// cancel schedule
 	ScheduleClear();
 }
 
@@ -221,13 +243,16 @@ FT205EV::Run()
 		_fd[0] = ::open(_ports[0], O_RDWR | O_NOCTTY);
 	}
 
+	// fds initialized?
 	if (_fd[1] < 0) {
 		// open fd
 		_fd[1] = ::open(_ports[1], O_RDWR | O_NOCTTY);
 	}
 
+	/* start the performance counter */
 	perf_begin(_sample_perf);
 
+	// count error
 	if (collect(0) == -EAGAIN) {
 		perf_count(_comms_errors);
 
@@ -237,26 +262,31 @@ FT205EV::Run()
 		perf_count(_comms_errors);
 	}
 
+	// if double sensors updated, get the data
 	if (updated[0] && updated[1]) {
+		// get first sensor data
 		float speed_horiz = windvane_nmea[0]->get_wind_speed();
 		float angle_horiz = windvane_nmea[0]->get_wind_dir();
 
+		// get second sensor data
 		float speed_vert = windvane_nmea[1]->get_wind_speed();
 		float angle_vert = windvane_nmea[1]->get_wind_dir();
 
+		// publish data
 		windvane_sensor_s windvane_sensor{};
 		windvane_sensor.timestamp = hrt_absolute_time();
 		windvane_sensor.speed_horiz = speed_horiz;
 		windvane_sensor.angle_horiz = angle_horiz;
 		windvane_sensor.speed_vert = speed_vert;
 		windvane_sensor.angle_vert = angle_vert;
-
 		_windvane_sensor_pub.publish(windvane_sensor);
 
+		// reset updated flag
 		updated[0] = false;
 		updated[1] = false;
 	}
 
+	/* stop the perf counter */
 	perf_end(_sample_perf);
 }
 

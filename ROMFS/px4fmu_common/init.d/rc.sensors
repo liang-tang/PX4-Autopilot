@@ -77,6 +77,8 @@ then
 	heater start
 fi
 
+ft205ev start
+
 # Teraranger one tof sensor
 if param greater -s SENS_EN_TRANGER 0
 then

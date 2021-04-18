@@ -546,6 +546,8 @@ else
 	#
 	sh /etc/init.d/rc.logging
 
+	windvane_estimator start
+
 	#
 	# Set additional parameters and env variables for selected AUTOSTART.
 	#

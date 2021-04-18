@@ -49,9 +49,11 @@ extern "C" __EXPORT int windvane_estimator_main(int argc, char *argv[]);
 class WINDVANE_ESTIMATOR : public ModuleBase<WINDVANE_ESTIMATOR>
 {
 public:
+	// constructor
 	WINDVANE_ESTIMATOR();
 
-	virtual ~WINDVANE_ESTIMATOR() = default;
+	// destructor
+	virtual ~WINDVANE_ESTIMATOR();
 
 	/** @see ModuleBase */
 	static int task_spawn(int argc, char *argv[]);
@@ -69,20 +71,26 @@ public:
 	void run() override;
 
 private:
+	// calculate and publish wind date
 	void calculate_and_publish();
+
+	// log wind data on sdcard
 	void log_on_sdcard();
 
+	// file descriptor
 	int _fd = -1;
 
+	// messages define
 	windvane_s windvane{};
 	windvane_sensor_s windvane_sensor{};
 	vehicle_attitude_s attitude{};
 	vehicle_local_position_s local_pos{};
 	vehicle_global_position_s global_pos{};
 
-	// Subscriptions
+	// Publication
 	uORB::Publication<windvane_s> _windvane_pub{ORB_ID(windvane)};
 
+	// Subscriptions
 	uORB::Subscription _att_sub{ORB_ID(vehicle_attitude)};
 	uORB::Subscription _local_pos_sub{ORB_ID(vehicle_local_position)};
 	uORB::Subscription _global_pos_sub{ORB_ID(vehicle_global_position)};

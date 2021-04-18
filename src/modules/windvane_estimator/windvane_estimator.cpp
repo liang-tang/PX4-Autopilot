@@ -88,6 +88,15 @@ WINDVANE_ESTIMATOR::WINDVANE_ESTIMATOR()
 {
 }
 
+WINDVANE_ESTIMATOR::~WINDVANE_ESTIMATOR()
+{
+	// close fd
+	if (_fd > 0) {
+		::close(_fd);
+		_fd = -1;
+	}
+}
+
 void WINDVANE_ESTIMATOR::run()
 {
 	int windvane_sensor_sub = orb_subscribe(ORB_ID(windvane_sensor));
@@ -138,6 +147,7 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 	Eulerf euler = Quatf(attitude.q);
 	// ground speed (world frame)
 	Vector3f Vgg(local_pos.vx, local_pos.vy, local_pos.vz);
+
 #if TEST_CASE == 1
 	euler.phi() = radians(0);
 	euler.theta() = radians(0);
@@ -172,10 +182,11 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 	Vba(1) = windvane_sensor.speed_horiz * sinf(radians(windvane_sensor.angle_horiz));
 	Vba(2) = windvane_sensor.speed_vert * cosf(radians(windvane_sensor.angle_vert));
 
-	matrix::Dcmf matrix  = matrix::Dcmf{matrix::Eulerf{
-							euler.phi(),
-							euler.theta(),
-							euler.psi()}};
+	// get current rotation matrix
+	Dcmf matrix  = Dcmf{Eulerf{
+				euler.phi(),
+				euler.theta(),
+				euler.psi()}};
 
 	// wind speed (world frame)
 	Vector3f Vga(0, 0, 0);
@@ -241,35 +252,43 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 
 void WINDVANE_ESTIMATOR::log_on_sdcard()
 {
+	// get current utc time
 	struct timespec ts = {};
 	px4_clock_gettime(CLOCK_REALTIME, &ts);
 	time_t utc_time_sec = ts.tv_sec + (ts.tv_nsec / 1e9);
 	time_t utc_time_ms = ts.tv_nsec / 1e6;
 
+	// valid time?
 	if (utc_time_sec < GPS_EPOCH_SECS) {
 		return;
 	}
 
-	/* apply utc offset */
+	// apply utc offset (8 hours)
 	utc_time_sec += 28800;
 
+	// convert to gm time
 	tm tt = {};
 	if (gmtime_r(&utc_time_sec, &tt) == nullptr) {
 		return;
 	}
 
 	char time_now_str[32] = "";
+	// format time string (eg. 2021_04_18-12_00_00)
 	strftime(time_now_str, sizeof(time_now_str), "%Y_%m_%d-%H_%M_%S", &tt);
 
 	if (_fd == -1) {
 		char log_file_name_str[64] = "";
+		// format file string (eg. /fs/microsd/2021_04_18-12_00_00.csv)
 		snprintf(log_file_name_str, sizeof(log_file_name_str), PX4_STORAGEDIR"/%s.csv", time_now_str);
 
+		// create file on sdcard
 		_fd = ::open(log_file_name_str, O_CREAT | O_WRONLY, PX4_O_MODE_666);
 		if (_fd == -1) {
 			PX4_INFO("open error");
 			return;
 		}
+
+		// log file head (first line content)
 		const char* head =
 				"Time,"
 				"Lat,Lon,Alt,"
@@ -279,12 +298,16 @@ void WINDVANE_ESTIMATOR::log_on_sdcard()
 				"speed_vert_sensor,angle_vert_sensor,"
 				"wind_speed_3d.x,wind_speed_3d.y, wind_speed_3d.z,"
 				"wind_speed_horiz,wind_angle_horiz\n";
+		// write to file
 		::write(_fd, head, strlen(head));
+		// sync file
 		fsync(_fd);
 	}
 
-	char *file = nullptr;
-	if (asprintf(&file, "%s:%03u,"
+	// log string
+	char *log_str = nullptr;
+	// format data
+	if (asprintf(&log_str, "%s:%03u,"
 			    "%.7f,%.7f,%.2f," // latitude longitude alt
 			    "%.2f,%.2f,%.2f," // ground_speed
 			    "%.2f,%.2f,%.2f," // attitude
@@ -305,9 +328,14 @@ void WINDVANE_ESTIMATOR::log_on_sdcard()
 		return;
 	}
 
-	::write(_fd, file, strlen(file));
+	// write to file
+	::write(_fd, log_str, strlen(log_str));
+
+	// sync to file
 	fsync(_fd);
-	free(file);
+
+	// free log_str
+	free(log_str);
 }
 
 int WINDVANE_ESTIMATOR::print_usage(const char *reason)

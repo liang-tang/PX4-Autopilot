@@ -44,6 +44,7 @@
 #include "mavlink_command_sender.h"
 #include "mavlink_simple_analyzer.h"
 #include "mavlink_high_latency2.h"
+#include <v2.0/ardupilotmega/mavlink_msg_data96.h>
 
 #include "streams/autopilot_version.h"
 #include "streams/flight_information.h"
@@ -118,6 +119,8 @@
 #include <uORB/topics/vehicle_trajectory_waypoint.h>
 #include <uORB/topics/vtol_vehicle_status.h>
 #include <uORB/topics/wind_estimate.h>
+
+#include <uORB/topics/windvane.h>
 
 using matrix::Vector3f;
 using matrix::wrap_2pi;
@@ -5243,6 +5246,71 @@ protected:
 	}
 };
 
+class MavlinkStreamWindVane : public MavlinkStream
+{
+public:
+	const char *get_name() const override
+	{
+		return MavlinkStreamWindVane::get_name_static();
+	}
+
+	static constexpr const char *get_name_static()
+	{
+		return "WIND_VANE";
+	}
+
+	static constexpr uint16_t get_id_static()
+	{
+		return MAVLINK_MSG_ID_DATA96;
+	}
+
+	uint16_t get_id() override
+	{
+		return get_id_static();
+	}
+
+	static MavlinkStream *new_instance(Mavlink *mavlink)
+	{
+		return new MavlinkStreamWindVane(mavlink);
+	}
+
+	unsigned get_size() override
+	{
+		return _windvane_sub.advertised() ? MAVLINK_MSG_ID_DATA96 + MAVLINK_NUM_NON_PAYLOAD_BYTES : 0;
+	}
+
+private:
+	uORB::Subscription _windvane_sub{ORB_ID(windvane)};
+
+	/* do not allow top copying this class */
+	MavlinkStreamWindVane(MavlinkStreamWindVane &) = delete;
+	MavlinkStreamWindVane &operator = (const MavlinkStreamWindVane &) = delete;
+
+protected:
+	explicit MavlinkStreamWindVane(Mavlink *mavlink) : MavlinkStream(mavlink)
+	{}
+
+	bool send(const hrt_abstime t) override
+	{
+		windvane_s windvane;
+
+		if (_windvane_sub.update(&windvane)) {
+			mavlink_data96_t msg{};
+
+			msg.type = 0;
+			msg.len = sizeof(windvane);
+
+			memcpy(msg.data, &windvane, sizeof(windvane));
+
+			mavlink_msg_data96_send_struct(_mavlink->get_channel(), &msg);
+
+			return true;
+		}
+
+		return false;
+	}
+};
+
 static const StreamListItem streams_list[] = {
 	create_stream_list_item<MavlinkStreamHeartbeat>(),
 	create_stream_list_item<MavlinkStreamStatustext>(),
@@ -5307,7 +5375,8 @@ static const StreamListItem streams_list[] = {
 	create_stream_list_item<MavlinkStreamProtocolVersion>(),
 	create_stream_list_item<MavlinkStreamFlightInformation>(),
 	create_stream_list_item<MavlinkStreamStorageInformation>(),
-	create_stream_list_item<MavlinkStreamRawRpm>()
+	create_stream_list_item<MavlinkStreamRawRpm>(),
+	create_stream_list_item<MavlinkStreamWindVane>()
 };
 
 const char *get_stream_name(const uint16_t msg_id)

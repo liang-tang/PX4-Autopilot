@@ -189,7 +189,18 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 		Owxy = 360 - degrees(acosf((Vgwxy * n) / (Vgwxy_len * n.length())));
 	}
 
-	windvane.timestamp = hrt_absolute_time();
+	// get current utc time
+	struct timespec ts = {};
+	px4_clock_gettime(CLOCK_REALTIME, &ts);
+	time_t utc_time_sec = ts.tv_sec + (ts.tv_nsec / 1e9);
+	time_t utc_time_ms = ts.tv_nsec / 1e6;
+
+	// timestamp
+	if (utc_time_sec < GPS_EPOCH_SECS || gps_pos.fix_type < 3) {
+		windvane.timestamp = 0;
+	} else {
+		windvane.timestamp = utc_time_sec * 1000ULL + utc_time_ms;
+	}
 
 	windvane.lat = global_pos.lat;
 	windvane.lon = global_pos.lon;
@@ -265,14 +276,11 @@ void WINDVANE_ESTIMATOR::update_test_case(Eulerf &euler, Vector3f &Vgg, windvane
 
 void WINDVANE_ESTIMATOR::log_on_sdcard()
 {
-	// get current utc time
-	struct timespec ts = {};
-	px4_clock_gettime(CLOCK_REALTIME, &ts);
-	time_t utc_time_sec = ts.tv_sec + (ts.tv_nsec / 1e9);
-	time_t utc_time_ms = ts.tv_nsec / 1e6;
+	time_t utc_time_sec = windvane.timestamp / 1000;
+	time_t utc_time_ms = windvane.timestamp % 1000;
 
 	// valid time?
-	if (utc_time_sec < GPS_EPOCH_SECS || gps_pos.fix_type < 3) {
+	if (utc_time_sec == 0) {
 		return;
 	}
 

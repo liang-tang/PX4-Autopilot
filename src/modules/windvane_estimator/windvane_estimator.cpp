@@ -97,11 +97,30 @@ WINDVANE_ESTIMATOR::~WINDVANE_ESTIMATOR()
 
 void WINDVANE_ESTIMATOR::run()
 {
+	int adc_sub = orb_subscribe(ORB_ID(adc_report));
+	px4_pollfd_struct_t fds[1];
+	fds[0].fd = adc_sub;
+	fds[0].events = POLLIN;
+
 	while (!should_exit()) {
-		// run at 10hz
-		px4_usleep(100000);
-		calculate_and_publish();
+		// wait for up to 1000ms for data
+		int pret = px4_poll(fds, (sizeof(fds) / sizeof(fds[0])), 1000);
+
+		if (pret == 0) {
+			// Timeout: let the loop run anyway, don't do `continue` here
+
+		} else if (pret < 0) {
+			// this is undesirable but not much we can do
+			PX4_ERR("poll error %d, %d", pret, errno);
+			px4_usleep(50000);
+			continue;
+
+		} else if (fds[0].revents & POLLIN) {
+			orb_copy(ORB_ID(adc_report), adc_sub, &adc_report);
+			calculate_and_publish();
+		}
 	}
+	orb_unsubscribe(adc_sub);
 }
 
 void WINDVANE_ESTIMATOR::calculate_and_publish()
@@ -126,11 +145,6 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 		_gps_position_sub.copy(&gps_pos);
 	}
 
-	// copy adc report
-	if (_adc_report_sub.updated()) {
-		_adc_report_sub.copy(&adc_report);
-	}
-
 	// copy airspeed
 	if (_airspeed_sub.updated()) {
 		_airspeed_sub.copy(&airspeed);
@@ -147,25 +161,37 @@ void WINDVANE_ESTIMATOR::calculate_and_publish()
 	}
 
 	// voltage raw
-	float voltage_aoa_raw = 0.0f;
-	float voltage_aos_raw = 0.0f;
+	static float voltage_aoa_raw = 0.0f;
+	static float voltage_aos_raw = 0.0f;
+	static int voltage_cnt = 0;
 
 	// get voltage raw data
 	for (unsigned i = 0; i < PX4_MAX_ADC_CHANNELS; ++i) {
 		// 6.6v ADC
 		if (adc_report.channel_id[i] == 4) {
-			voltage_aoa_raw = adc_report.raw_data[i];
+			voltage_aoa_raw += adc_report.raw_data[i];
 		}
 
 		// 3.3v ADC
 		if (adc_report.channel_id[i] == 14) {
-			voltage_aos_raw = adc_report.raw_data[i];
+			voltage_aos_raw += adc_report.raw_data[i];
 		}
+	}
+
+	if (++voltage_cnt == 10) {
+		voltage_aoa_raw /= voltage_cnt;
+		voltage_aos_raw /= voltage_cnt;
+	} else {
+		return;
 	}
 
 	// convert to real voltage
 	float voltage_aoa = voltage_aoa_raw * adc_report.v_ref / adc_report.resolution * 2.0f;
 	float voltage_aos = voltage_aos_raw * adc_report.v_ref / adc_report.resolution;
+
+	voltage_aos_raw =0;
+	voltage_aoa_raw =0;
+	voltage_cnt = 0;
 
 	// convert to AOA, AOS
 	float aoa = voltage_aoa* 61.12f * 2.0f - 151.0f;

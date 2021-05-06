@@ -109,7 +109,6 @@ private:
 	vehicle_air_data_s vehicle_air_data{};
 	differential_pressure_s differential_pressure{};
 
-	uORB::Subscription _adc_report_sub{ORB_ID(adc_report)};
 	uORB::Subscription _airspeed_sub{ORB_ID(airspeed)};
 	uORB::Subscription _vehicle_air_data_sub{ORB_ID(vehicle_air_data)};
 	uORB::Subscription _diff_pres_sub{ORB_ID(differential_pressure)};
